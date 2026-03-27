@@ -1,34 +1,107 @@
-# 🧠 ourmem — Persistent Memory for AI Agents
+<p align="center">
+  <strong>🧠 ourmem</strong><br/>
+  Persistent Memory for AI Agents
+</p>
 
-> Open-source plugins for AI agent persistent memory with Space-based sharing.
-> Cloud hosted at [api.ourmem.ai](https://api.ourmem.ai) or self-deploy with Docker.
+<p align="center">
+  <a href="https://github.com/yhyyz/omem/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"></a>
+  <a href="https://ourmem.ai"><img src="https://img.shields.io/badge/hosted-api.ourmem.ai-green.svg" alt="Hosted"></a>
+  <a href="https://github.com/yhyyz/omem"><img src="https://img.shields.io/github/stars/yhyyz/omem?style=social" alt="Stars"></a>
+</p>
 
-## Features
+<p align="center">
+  <strong>English</strong> | <a href="README_CN.md">简体中文</a>
+</p>
 
-- 🔍 **11-stage hybrid retrieval** — vector + BM25 + RRF fusion + cross-encoder reranker + Weibull decay
-- 🧹 **7-decision smart dedup** — CREATE / MERGE / SKIP / SUPERSEDE / SUPPORT / CONTEXTUALIZE / CONTRADICT
-- 👤 **User Profile** — auto-generated static facts + dynamic context (<100ms)
-- 📦 **Space-based sharing** — Personal / Team / Organization memory spaces
-- ⏰ **Weibull decay + 3-tier promotion** — Core / Working / Peripheral with automatic lifecycle
-- 🛡️ **Noise filter** — regex patterns + embedded prototypes + feedback learning
-- 🎯 **Admission control** — 5-dimension scoring (utility, confidence, novelty, recency, type prior)
-- 📄 **Multi-modal** — PDF, image OCR, video transcription, code AST chunking
-- 🔗 **GitHub connector** — real-time webhook sync for code, issues, PRs
-- 🔒 **Privacy protection** — `<private>` tag redaction
-- 🚀 **Cross-platform** — OpenCode, Claude Code, OpenClaw, MCP Server
+---
+
+## The Problem
+
+Your AI agents have amnesia.
+
+- 🧠 **Amnesia** — every session starts from zero. Preferences, decisions, context — all gone.
+- 🏝️ **Silos** — your Coder agent can't access what your Writer agent learned.
+- 📁 **Local lock-in** — memory tied to one machine. Switch devices, lose everything.
+- 🚫 **No sharing** — team members can't benefit from each other's agent knowledge.
+- 🔍 **Dumb recall** — keyword match only. No semantic understanding, no relevance ranking.
+
+**ourmem fixes all of this.**
+
+## What is ourmem
+
+ourmem gives AI agents persistent memory that survives sessions, restarts, and machine switches. It stores facts, preferences, and context in a cloud (or self-hosted) server with 11-stage hybrid retrieval, 7-decision smart deduplication, and Space-based sharing across agents and teams.
+
+One API key reconnects everything.
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 🧑‍💻 I use AI coding tools
+
+Install the plugin for your platform. Memory works automatically — your agent recalls past context on session start and captures key info on session end.
+
+**→ Jump to [Quick Start](#quick-start)**
+
+</td>
+<td width="50%" valign="top">
+
+### 🔧 I'm building AI products
+
+REST API with 35 endpoints. Docker one-liner for self-deploy. Embed persistent memory into your own agents and workflows.
+
+**→ Jump to [Self-Deploy](#self-deploy)**
+
+</td>
+</tr>
+</table>
+
+## How It's Different
+
+| Feature | ourmem | mem9 | Supermemory | mem0 |
+|---------|--------|------|-------------|------|
+| Open source | ✅ Apache-2.0 | ✅ Apache-2.0 | ❌ Core closed | ✅ Apache-2.0 |
+| Self-deploy | ✅ Docker one-liner | ⚠️ Cloud only | ❌ SaaS only | ✅ Local |
+| Platforms | 4 (OpenCode, Claude Code, OpenClaw, MCP) | 1 (OpenClaw) | 4 | 3 |
+| Space sharing | ✅ Personal / Team / Org | ❌ | ❌ | ❌ |
+| Smart dedup | 7 decisions | 4 decisions | Unknown | Basic |
+| Retrieval pipeline | 11 stages | Basic RRF | Cloud | Basic vector |
+| User Profile | ✅ Static + dynamic | ❌ | ✅ | ❌ |
+| Memory decay | Weibull 3-tier | ❌ | Auto-forget | ❌ |
+| Multi-modal | ✅ PDF / image / video / code | ❌ | ✅ | ❌ |
+| Noise filter | ✅ Regex + vector + feedback | ❌ | ❌ | ❌ |
+
+## How It Works
+
+```
+Your AI Agent (OpenCode / Claude Code / OpenClaw / Cursor)
+        ↓ auto-recall + auto-capture
+   ourmem Plugin (thin HTTP client)
+        ↓ REST API (X-API-Key auth)
+   ourmem Server
+        │
+        ├── Smart Ingest ─── LLM extraction → noise filter → admission → 7-decision reconciliation
+        ├── Hybrid Search ── vector + BM25 → RRF fusion → reranker → decay boost → MMR (11 stages)
+        ├── User Profile ─── static facts + dynamic context, <100ms
+        ├── Space Sharing ── Personal / Team / Organization memory isolation
+        └── Lifecycle ────── Weibull decay, 3-tier promotion (Core/Working/Peripheral), auto-forgetting
+```
 
 ## Quick Start
 
 ### 1. Get an API Key
 
-**Hosted (recommended)**:
+**Hosted (no setup needed):**
+
 ```bash
 curl -sX POST https://api.ourmem.ai/v1/tenants \
   -H "Content-Type: application/json" \
   -d '{"name": "my-workspace"}' | jq .
+# → {"id": "xxx", "api_key": "xxx", "status": "active"}
 ```
 
-**Self-deploy**:
+**Self-deploy:**
+
 ```bash
 docker run -d -p 8080:8080 -e OMEM_EMBED_PROVIDER=bedrock ourmem:latest
 curl -sX POST http://localhost:8080/v1/tenants \
@@ -36,13 +109,14 @@ curl -sX POST http://localhost:8080/v1/tenants \
   -d '{"name": "my-workspace"}' | jq .
 ```
 
-Save the returned `api_key` — this is your access key to your memory space.
+Save the returned `api_key` — this reconnects you to the same memory from any machine.
 
-### 2. Install for Your Platform
+### 2. Install Plugin
 
 #### OpenCode
 
 Add to `opencode.json`:
+
 ```json
 {
   "plugin": ["@ourmem/opencode"]
@@ -50,6 +124,7 @@ Add to `opencode.json`:
 ```
 
 Set environment variables:
+
 ```bash
 export OMEM_API_URL="https://api.ourmem.ai"
 export OMEM_API_KEY="your-api-key"
@@ -63,6 +138,7 @@ export OMEM_API_KEY="your-api-key"
 ```
 
 Set in `~/.claude/settings.json`:
+
 ```json
 {
   "env": {
@@ -79,6 +155,7 @@ openclaw plugins install @ourmem/openclaw
 ```
 
 Add to `openclaw.json`:
+
 ```json
 {
   "plugins": {
@@ -132,13 +209,13 @@ curl -s "$OMEM_API_URL/v1/memories/search?q=editor+theme" \
 
 ## Space-Based Memory Sharing
 
-ourmem organizes memories into **Spaces** — isolated containers with fine-grained access control.
+ourmem's unique capability: three-level memory spaces with fine-grained access control.
 
 | Space Type | Scope | Use Case |
 |-----------|-------|----------|
-| **Personal** | One user, multiple agents | Your Coder + Writer + Researcher agents share preferences |
+| **Personal** | One user, multiple agents | Your Coder + Writer + Researcher share preferences |
 | **Team** | Multiple users | Backend team shares architecture decisions |
-| **Organization** | Company-wide | Tech standards, security policies |
+| **Organization** | Company-wide | Tech standards, security policies, shared knowledge |
 
 ```bash
 # Create a team space
@@ -152,26 +229,28 @@ curl -sX POST "$OMEM_API_URL/v1/memories/MEMORY_ID/share" \
   -H "X-API-Key: $OMEM_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"target_space": "team:SPACE_ID"}'
+
+# Search across all spaces
+curl -s "$OMEM_API_URL/v1/memories/search?q=architecture&space=all" \
+  -H "X-API-Key: $OMEM_API_KEY"
 ```
 
-Each agent sees: **own private** + **shared spaces** + **global**. Agents can only modify their own private memories and shared space memories — never another agent's private data.
+Each agent sees: **own private** + **shared spaces** + **global**. Agents can only modify their own and shared memories — never another agent's private data.
 
-## API Reference
+## What Your Agent Gets
 
-Full API documentation: [docs/API.md](docs/API.md)
+| Tool | Purpose |
+|------|---------|
+| `memory_store` | Save facts, decisions, preferences |
+| `memory_search` | Semantic + keyword hybrid search |
+| `memory_get` | Retrieve by ID |
+| `memory_update` | Modify existing memory |
+| `memory_delete` | Remove a memory |
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/v1/tenants` | Create workspace & get API key |
-| POST | `/v1/memories` | Store memory or ingest conversation |
-| GET | `/v1/memories/search` | Hybrid search (vector + BM25) |
-| GET | `/v1/memories` | List with filters & pagination |
-| GET | `/v1/profile` | Auto-generated user profile |
-| POST | `/v1/spaces` | Create shared space |
-| POST | `/v1/memories/:id/share` | Share to another space |
-| GET | `/v1/stats` | Analytics dashboard data |
-
-See [docs/API.md](docs/API.md) for all 35 endpoints.
+| Hook | Trigger | Effect |
+|------|---------|--------|
+| SessionStart | New session | Recent memories auto-injected into context |
+| SessionEnd | Session ends | Key information auto-captured |
 
 ## Self-Deploy
 
@@ -185,19 +264,47 @@ docker run -d -p 8080:8080 \
   -e AWS_REGION=us-east-1 \
   ourmem:latest
 
-# With OpenAI embedding
+# With OpenAI-compatible embedding
 docker run -d -p 8080:8080 \
   -e OMEM_EMBED_PROVIDER=openai-compatible \
   -e OMEM_EMBED_API_KEY=sk-xxx \
   ourmem:latest
 ```
 
-See [docs/DEPLOY.md](docs/DEPLOY.md) for full deployment guide.
+Full deployment guide: [docs/DEPLOY.md](docs/DEPLOY.md)
+
+## API at a Glance
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/v1/tenants` | Create workspace & get API key |
+| POST | `/v1/memories` | Store memory or smart-ingest conversation |
+| GET | `/v1/memories/search` | 11-stage hybrid search |
+| GET | `/v1/memories` | List with filters & pagination |
+| GET | `/v1/profile` | Auto-generated user profile |
+| POST | `/v1/spaces` | Create shared space |
+| POST | `/v1/memories/:id/share` | Share memory to a space |
+| POST | `/v1/files` | Upload PDF / image / video / code |
+| GET | `/v1/stats` | Analytics & insights |
+
+Full API reference (35 endpoints): [docs/API.md](docs/API.md)
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [docs/API.md](docs/API.md) | Complete REST API reference |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Docker & AWS deployment guide |
+| [docs/PLUGINS.md](docs/PLUGINS.md) | Plugin installation for all 4 platforms |
+| [skills/ourmem/SKILL.md](skills/ourmem/SKILL.md) | AI agent onboarding skill |
 
 ## License
 
-Apache-2.0 — plugins and documentation.
+Apache-2.0
 
 ---
 
-Built with ❤️ by the [ourmem](https://ourmem.ai) team.
+<p align="center">
+  <strong>Give your AI a memory. It's about time.</strong><br/>
+  <a href="https://ourmem.ai">ourmem.ai</a> · <a href="https://github.com/yhyyz/omem">GitHub</a>
+</p>
