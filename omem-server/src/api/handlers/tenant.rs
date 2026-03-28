@@ -14,6 +14,7 @@ use crate::domain::tenant::{Tenant, TenantConfig, TenantStatus};
 
 #[derive(Deserialize)]
 pub struct CreateTenantBody {
+    #[serde(default)]
     pub name: String,
 }
 
@@ -24,14 +25,15 @@ pub async fn create_tenant(
     State(state): State<Arc<AppState>>,
     Json(body): Json<CreateTenantBody>,
 ) -> Result<impl IntoResponse, OmemError> {
-    if body.name.is_empty() {
-        return Err(OmemError::Validation("name is required".to_string()));
-    }
-
     let id = Uuid::new_v4().to_string();
+    let tenant_name = if body.name.is_empty() {
+        format!("tenant-{}", &id[..8])
+    } else {
+        body.name.clone()
+    };
     let tenant = Tenant {
         id: id.clone(),
-        name: body.name.clone(),
+        name: tenant_name,
         status: TenantStatus::Active,
         config: TenantConfig::default(),
         created_at: chrono::Utc::now().to_rfc3339(),
