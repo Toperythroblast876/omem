@@ -1,12 +1,12 @@
 <p align="center">
   <strong>🧠 ourmem</strong><br/>
-  Persistent Memory for AI Agents
+  Shared Memory That Never Forgets
 </p>
 
 <p align="center">
-  <a href="https://github.com/yhyyz/omem/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"></a>
+  <a href="https://github.com/ourmem/omem/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"></a>
   <a href="https://ourmem.ai"><img src="https://img.shields.io/badge/hosted-api.ourmem.ai-green.svg" alt="Hosted"></a>
-  <a href="https://github.com/yhyyz/omem"><img src="https://img.shields.io/github/stars/yhyyz/omem?style=social" alt="Stars"></a>
+  <a href="https://github.com/ourmem/omem"><img src="https://img.shields.io/github/stars/ourmem/omem?style=social" alt="Stars"></a>
 </p>
 
 <p align="center">
@@ -29,9 +29,7 @@ Your AI agents have amnesia.
 
 ## What is ourmem
 
-ourmem gives AI agents persistent memory that survives sessions, restarts, and machine switches. It stores facts, preferences, and context in a cloud (or self-hosted) server with 11-stage hybrid retrieval, 7-decision smart deduplication, and Space-based sharing across agents and teams.
-
-One API key reconnects everything.
+ourmem gives AI agents shared persistent memory — across sessions, devices, agents, and teams. One API key reconnects everything.
 
 <table>
 <tr>
@@ -56,20 +54,45 @@ REST API with 35 endpoints. Docker one-liner for self-deploy. Embed persistent m
 </tr>
 </table>
 
-## How It's Different
+## Core Capabilities
 
-| Feature | ourmem | mem9 | Supermemory | mem0 |
-|---------|--------|------|-------------|------|
-| Open source | ✅ Apache-2.0 | ✅ Apache-2.0 | ❌ Core closed | ✅ Apache-2.0 |
-| Self-deploy | ✅ Docker one-liner | ⚠️ Cloud only | ❌ SaaS only | ✅ Local |
-| Platforms | 4 (OpenCode, Claude Code, OpenClaw, MCP) | 1 (OpenClaw) | 4 | 3 |
-| Space sharing | ✅ Personal / Team / Org | ❌ | ❌ | ❌ |
-| Smart dedup | 7 decisions | 4 decisions | Unknown | Basic |
-| Retrieval pipeline | 11 stages | Basic RRF | Cloud | Basic vector |
-| User Profile | ✅ Static + dynamic | ❌ | ✅ | ❌ |
-| Memory decay | Weibull 3-tier | ❌ | Auto-forget | ❌ |
-| Multi-modal | ✅ PDF / image / video / code | ❌ | ✅ | ❌ |
-| Noise filter | ✅ Regex + vector + feedback | ❌ | ❌ | ❌ |
+<table>
+<tr>
+<td width="25%" align="center">
+<h4>🔗 Shared Across Boundaries</h4>
+Three-tier Spaces — Personal, Team, Organization — let knowledge flow across agents and teams with full provenance tracking.
+</td>
+<td width="25%" align="center">
+<h4>🧠 Never Forget</h4>
+Weibull decay model manages the memory lifecycle — core memories persist, peripheral ones gracefully fade. No manual cleanup.
+</td>
+<td width="25%" align="center">
+<h4>🔍 Deep Understanding</h4>
+11-stage hybrid retrieval: vector search, BM25, RRF fusion, cross-encoder reranking, and MMR diversity for precise recall.
+</td>
+<td width="25%" align="center">
+<h4>⚡ Smart Evolution</h4>
+7-decision reconciliation — CREATE, MERGE, SUPERSEDE, SUPPORT, CONTEXTUALIZE, CONTRADICT, or SKIP — makes memories smarter over time.
+</td>
+</tr>
+</table>
+
+## From Isolated Agents to Collective Intelligence
+
+Most AI memory systems trap knowledge in silos. ourmem's three-tier Space architecture enables knowledge flow across agents and teams — with provenance tracking and quality-gated sharing.
+
+> *Research shows collaborative memory reduces redundant work by up to 61% — agents stop re-discovering what their teammates already know.*
+> — Collaborative Memory, ICLR 2026
+
+| | Personal | Team | Organization |
+|---|----------|------|--------------|
+| **Scope** | One user, multiple agents | Multiple users | Company-wide |
+| **Example** | Coder + Writer share preferences | Backend team shares arch decisions | Tech standards, security policies |
+| **Access** | Owner's agents only | Team members | All org members (read-only) |
+
+**Provenance-tracked sharing** — every shared memory carries its lineage: who shared it, when, and where it came from.
+
+**Quality-gated auto-sharing** — rules filter by importance, category, and tags. Only high-value insights cross space boundaries.
 
 ## How It Works
 
@@ -83,7 +106,7 @@ Your AI Agent (OpenCode / Claude Code / OpenClaw / Cursor)
         ├── Smart Ingest ─── LLM extraction → noise filter → admission → 7-decision reconciliation
         ├── Hybrid Search ── vector + BM25 → RRF fusion → reranker → decay boost → MMR (11 stages)
         ├── User Profile ─── static facts + dynamic context, <100ms
-        ├── Space Sharing ── Personal / Team / Organization memory isolation
+        ├── Space Sharing ── Personal / Team / Organization with provenance tracking
         └── Lifecycle ────── Weibull decay, 3-tier promotion (Core/Working/Peripheral), auto-forgetting
 ```
 
@@ -133,8 +156,8 @@ export OMEM_API_KEY="your-api-key"
 #### Claude Code
 
 ```bash
-/plugin marketplace add yhyyz/omem
-/plugin install ourmem@yhyyz/omem
+/plugin marketplace add ourmem/omem
+/plugin install ourmem@ourmem/omem
 ```
 
 Set in `~/.claude/settings.json`:
@@ -207,36 +230,6 @@ curl -s "$OMEM_API_URL/v1/memories/search?q=editor+theme" \
   -H "X-API-Key: $OMEM_API_KEY" | jq '.results[0].memory.content'
 ```
 
-## Space-Based Memory Sharing
-
-ourmem's unique capability: three-level memory spaces with fine-grained access control.
-
-| Space Type | Scope | Use Case |
-|-----------|-------|----------|
-| **Personal** | One user, multiple agents | Your Coder + Writer + Researcher share preferences |
-| **Team** | Multiple users | Backend team shares architecture decisions |
-| **Organization** | Company-wide | Tech standards, security policies, shared knowledge |
-
-```bash
-# Create a team space
-curl -sX POST "$OMEM_API_URL/v1/spaces" \
-  -H "X-API-Key: $OMEM_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Backend Team", "space_type": "team"}'
-
-# Share a memory to the team
-curl -sX POST "$OMEM_API_URL/v1/memories/MEMORY_ID/share" \
-  -H "X-API-Key: $OMEM_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"target_space": "team:SPACE_ID"}'
-
-# Search across all spaces
-curl -s "$OMEM_API_URL/v1/memories/search?q=architecture&space=all" \
-  -H "X-API-Key: $OMEM_API_KEY"
-```
-
-Each agent sees: **own private** + **shared spaces** + **global**. Agents can only modify their own and shared memories — never another agent's private data.
-
 ## What Your Agent Gets
 
 | Tool | Purpose |
@@ -251,6 +244,21 @@ Each agent sees: **own private** + **shared spaces** + **global**. Agents can on
 |------|---------|--------|
 | SessionStart | New session | Recent memories auto-injected into context |
 | SessionEnd | Session ends | Key information auto-captured |
+
+## Memory Space
+
+Browse, search, and manage your agent's memories visually at **[ourmem.ai/space](https://ourmem.ai/space)** — see how memories connect, evolve, and decay over time.
+
+## Security & Privacy
+
+| | |
+|---|---|
+| **Rust Memory Safety** | No garbage collector, no data races. Ownership model guarantees safety at compile time. |
+| **Tenant Isolation** | X-API-Key auth with query-level tenant filtering. Every operation verifies ownership. |
+| **Privacy Protection** | `<private>` tag redaction strips sensitive content before storage. |
+| **Encryption** | HTTPS for all API transit. Server-side encryption at rest on S3. |
+| **Admission Control** | 5-dimension scoring gate rejects low-quality data before storage. |
+| **Open Source Auditable** | Apache-2.0 licensed. Audit every line, fork it, run your own instance. |
 
 ## Self-Deploy
 
@@ -305,7 +313,7 @@ RUSTFLAGS="-C target-feature=+crt-static -C relocation-model=static" \
 # Statically linked, runs anywhere
 ```
 
-> **Note:** The musl build disables `--no-default-features` which excludes AWS Bedrock support. Use `OMEM_EMBED_PROVIDER=openai-compatible` (e.g. DashScope, OpenAI) instead. This is because `aws-lc-sys` (AWS crypto library) crashes on musl static linking due to `dlopen(NULL)` incompatibility ([aws-c-cal#213](https://github.com/awslabs/aws-c-cal/issues/213)), and Rust's default `static-pie` output segfaults with musl-gcc ([rust-lang/rust#95926](https://github.com/rust-lang/rust/issues/95926)).
+> **Note:** The musl build uses `--no-default-features` which excludes AWS Bedrock support. Use `OMEM_EMBED_PROVIDER=openai-compatible` (e.g. DashScope, OpenAI) instead. This is because `aws-lc-sys` (AWS crypto library) crashes on musl static linking due to `dlopen(NULL)` incompatibility ([aws-c-cal#213](https://github.com/awslabs/aws-c-cal/issues/213)), and Rust's default `static-pie` output segfaults with musl-gcc ([rust-lang/rust#95926](https://github.com/rust-lang/rust/issues/95926)).
 
 ### Transfer to any server
 
@@ -352,6 +360,6 @@ Apache-2.0
 ---
 
 <p align="center">
-  <strong>Give your AI a memory. It's about time.</strong><br/>
-  <a href="https://ourmem.ai">ourmem.ai</a> · <a href="https://github.com/yhyyz/omem">GitHub</a>
+  <strong>Shared Memory That Never Forgets.</strong><br/>
+  <a href="https://ourmem.ai">ourmem.ai</a> · <a href="https://github.com/ourmem/omem">GitHub</a>
 </p>
