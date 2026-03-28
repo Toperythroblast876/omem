@@ -21,7 +21,7 @@ const VALID_CATEGORIES: &[&str] = &[
 pub struct FactExtractor {
     llm: Arc<dyn LlmService>,
     max_facts: usize,
-    max_input_chars: usize,
+    pub(crate) max_input_chars: usize,
 }
 
 impl FactExtractor {

@@ -10,7 +10,7 @@ pub mod tenant;
 
 pub use files::upload_file;
 pub use github::{github_connect, github_webhook};
-pub use imports::{create_import, get_import, list_imports};
+pub use imports::{create_import, get_import, list_imports, trigger_intelligence};
 pub use memory::{
     create_memory, delete_memory, get_memory, list_memories, search_memories, update_memory,
 };

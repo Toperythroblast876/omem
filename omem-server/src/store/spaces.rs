@@ -5,12 +5,46 @@ use arrow_schema::{DataType, Field, Schema};
 use futures::TryStreamExt;
 use lancedb::query::{ExecutableQuery, QueryBase};
 use lancedb::Connection;
+use serde::{Deserialize, Serialize};
 
 use crate::domain::error::OmemError;
 use crate::domain::space::{SharingEvent, Space};
 
 const SPACES_TABLE: &str = "spaces";
 const SHARING_EVENTS_TABLE: &str = "sharing_events";
+const IMPORT_TASKS_TABLE: &str = "import_tasks";
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ImportTaskRecord {
+    pub id: String,
+    pub status: String,
+    pub file_type: String,
+    pub filename: String,
+    pub agent_id: Option<String>,
+    pub space_id: String,
+    pub post_process: bool,
+
+    // Stage 1: Storage
+    pub storage_total: usize,
+    pub storage_stored: usize,
+    pub storage_skipped: usize,
+
+    // Stage 2: Extraction
+    pub extraction_status: String,
+    pub extraction_chunks: usize,
+    pub extraction_facts: usize,
+    pub extraction_progress: usize,
+
+    // Stage 3: Reconciliation
+    pub reconcile_status: String,
+    pub reconcile_relations: usize,
+    pub reconcile_merged: usize,
+    pub reconcile_progress: usize,
+
+    pub errors: Vec<String>,
+    pub created_at: String,
+    pub completed_at: Option<String>,
+}
 
 pub struct SpaceStore {
     spaces_db: Connection,
@@ -51,6 +85,16 @@ impl SpaceStore {
                 })?;
         }
 
+        if !existing.contains(&IMPORT_TASKS_TABLE.to_string()) {
+            self.spaces_db
+                .create_empty_table(IMPORT_TASKS_TABLE, Self::import_tasks_schema())
+                .execute()
+                .await
+                .map_err(|e| {
+                    OmemError::Storage(format!("failed to create import_tasks table: {e}"))
+                })?;
+        }
+
         Ok(())
     }
 
@@ -78,6 +122,16 @@ impl SpaceStore {
         ]))
     }
 
+    fn import_tasks_schema() -> Arc<Schema> {
+        Arc::new(Schema::new(vec![
+            Field::new("id", DataType::Utf8, false),
+            Field::new("data", DataType::Utf8, false),
+            Field::new("space_id", DataType::Utf8, false),
+            Field::new("status", DataType::Utf8, false),
+            Field::new("created_at", DataType::Utf8, false),
+        ]))
+    }
+
     async fn open_spaces_table(&self) -> Result<lancedb::table::Table, OmemError> {
         self.spaces_db
             .open_table(SPACES_TABLE)
@@ -92,6 +146,14 @@ impl SpaceStore {
             .execute()
             .await
             .map_err(|e| OmemError::Storage(format!("failed to open sharing_events table: {e}")))
+    }
+
+    async fn open_import_tasks_table(&self) -> Result<lancedb::table::Table, OmemError> {
+        self.spaces_db
+            .open_table(IMPORT_TASKS_TABLE)
+            .execute()
+            .await
+            .map_err(|e| OmemError::Storage(format!("failed to open import_tasks table: {e}")))
     }
 
     pub async fn create_space(&self, space: &Space) -> Result<(), OmemError> {
@@ -241,6 +303,114 @@ impl SpaceStore {
         Ok(events)
     }
 
+    pub async fn create_import_task(&self, task: &ImportTaskRecord) -> Result<(), OmemError> {
+        let data_json = serde_json::to_string(task)
+            .map_err(|e| OmemError::Storage(format!("failed to serialize import task: {e}")))?;
+
+        let batch = RecordBatch::try_new(
+            Self::import_tasks_schema(),
+            vec![
+                Arc::new(StringArray::from(vec![task.id.as_str()])),
+                Arc::new(StringArray::from(vec![data_json.as_str()])),
+                Arc::new(StringArray::from(vec![task.space_id.as_str()])),
+                Arc::new(StringArray::from(vec![task.status.as_str()])),
+                Arc::new(StringArray::from(vec![task.created_at.as_str()])),
+            ],
+        )
+        .map_err(|e| OmemError::Storage(format!("failed to build import task batch: {e}")))?;
+
+        let table = self.open_import_tasks_table().await?;
+        let reader = RecordBatchIterator::new(vec![Ok(batch)], Self::import_tasks_schema());
+        table
+            .add(Box::new(reader) as Box<dyn arrow_array::RecordBatchReader + Send>)
+            .execute()
+            .await
+            .map_err(|e| OmemError::Storage(format!("failed to insert import task: {e}")))?;
+
+        Ok(())
+    }
+
+    pub async fn get_import_task(&self, id: &str) -> Result<Option<ImportTaskRecord>, OmemError> {
+        let table = self.open_import_tasks_table().await?;
+        let batches: Vec<RecordBatch> = table
+            .query()
+            .only_if(format!("id = '{}'", escape_sql(id)))
+            .limit(1)
+            .execute()
+            .await
+            .map_err(|e| OmemError::Storage(format!("import task query failed: {e}")))?
+            .try_collect()
+            .await
+            .map_err(|e| OmemError::Storage(format!("collect failed: {e}")))?;
+
+        for batch in &batches {
+            if batch.num_rows() > 0 {
+                return Ok(Some(Self::row_to_import_task(batch, 0)?));
+            }
+        }
+        Ok(None)
+    }
+
+    pub async fn update_import_task(&self, task: &ImportTaskRecord) -> Result<(), OmemError> {
+        let table = self.open_import_tasks_table().await?;
+        table
+            .delete(&format!("id = '{}'", escape_sql(&task.id)))
+            .await
+            .map_err(|e| OmemError::Storage(format!("delete for import task update failed: {e}")))?;
+
+        self.create_import_task(task).await
+    }
+
+    pub async fn list_import_tasks(
+        &self,
+        space_id: &str,
+        limit: usize,
+    ) -> Result<Vec<ImportTaskRecord>, OmemError> {
+        let table = self.open_import_tasks_table().await?;
+        let batches: Vec<RecordBatch> = table
+            .query()
+            .only_if(format!("space_id = '{}'", escape_sql(space_id)))
+            .limit(limit)
+            .execute()
+            .await
+            .map_err(|e| OmemError::Storage(format!("list import tasks query failed: {e}")))?
+            .try_collect()
+            .await
+            .map_err(|e| OmemError::Storage(format!("collect failed: {e}")))?;
+
+        let mut tasks = Vec::new();
+        for batch in &batches {
+            for i in 0..batch.num_rows() {
+                tasks.push(Self::row_to_import_task(batch, i)?);
+            }
+        }
+        Ok(tasks)
+    }
+
+    pub async fn list_all_import_tasks(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<ImportTaskRecord>, OmemError> {
+        let table = self.open_import_tasks_table().await?;
+        let batches: Vec<RecordBatch> = table
+            .query()
+            .limit(limit)
+            .execute()
+            .await
+            .map_err(|e| OmemError::Storage(format!("list all import tasks query failed: {e}")))?
+            .try_collect()
+            .await
+            .map_err(|e| OmemError::Storage(format!("collect failed: {e}")))?;
+
+        let mut tasks = Vec::new();
+        for batch in &batches {
+            for i in 0..batch.num_rows() {
+                tasks.push(Self::row_to_import_task(batch, i)?);
+            }
+        }
+        Ok(tasks)
+    }
+
     fn row_to_space(batch: &RecordBatch, row: usize) -> Result<Space, OmemError> {
         let col = batch
             .column_by_name("data")
@@ -252,6 +422,19 @@ impl SpaceStore {
         let data_json = arr.value(row);
         serde_json::from_str(data_json)
             .map_err(|e| OmemError::Storage(format!("failed to parse space data: {e}")))
+    }
+
+    fn row_to_import_task(batch: &RecordBatch, row: usize) -> Result<ImportTaskRecord, OmemError> {
+        let col = batch
+            .column_by_name("data")
+            .ok_or_else(|| OmemError::Storage("missing column: data".to_string()))?;
+        let arr = col
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .ok_or_else(|| OmemError::Storage("column data is not Utf8".to_string()))?;
+        let data_json = arr.value(row);
+        serde_json::from_str(data_json)
+            .map_err(|e| OmemError::Storage(format!("failed to parse import task data: {e}")))
     }
 
     pub async fn list_all_events(&self, limit: usize) -> Result<Vec<SharingEvent>, OmemError> {
