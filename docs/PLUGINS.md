@@ -1,146 +1,121 @@
-# omem — Plugin Installation Guide
+# ourmem — Plugin Installation Guide
 
-omem provides plugins for 4 AI coding platforms. Each plugin is a thin HTTP client that connects to the omem-server REST API.
+ourmem provides plugins for 4 AI coding platforms. Each plugin is a thin HTTP client that connects to the omem-server REST API.
 
 ## Prerequisites (All Platforms)
 
-1. **Running omem-server** — See [DEPLOY.md](DEPLOY.md) for setup
+1. **Running omem-server** — Use the hosted service at `api.ourmem.ai` or self-host (see [DEPLOY.md](DEPLOY.md))
 2. **API key** — Create a tenant to get one:
    ```bash
-   curl -X POST http://localhost:8080/v1/tenants \
+   # Hosted
+   curl -sX POST https://api.ourmem.ai/v1/tenants \
      -H "Content-Type: application/json" \
-     -d '{"name": "my-workspace"}'
+     -d '{"name": "my-workspace"}' | jq .
    # → {"id": "abc-123", "api_key": "abc-123", "status": "active"}
+
+   # Self-hosted
+   curl -sX POST http://localhost:8080/v1/tenants \
+     -H "Content-Type: application/json" \
+     -d '{"name": "my-workspace"}' | jq .
    ```
 
 ---
 
 ## 1. OpenCode
 
-**Package**: `@omem/opencode`  
-**Runtime**: Bun  
+**Package**: `@ourmem/opencode`
+**Version**: 0.2.1
+**Runtime**: Bun / Node
 **Source**: [`plugins/opencode/`](../plugins/opencode/)
 
 ### Features
 
-- Auto-recall on session start (injects recent memories into system prompt)
-- Auto-capture on session idle (sends conversation to ingest pipeline)
-- Keyword detection (Chinese + English memory-related phrases)
-- Privacy filtering (`<private>` tag redaction)
-- 5 tools: store, search, get, update, delete
+| Feature | How it works |
+|---------|-------------|
+| Auto-recall on first message | Semantic search using the first user message, plus profile injection into system prompt |
+| Keyword detection | Detects "remember", "save this", "记住", "记下来", etc. and nudges the agent to use `memory_store` (code-block aware) |
+| Context preservation on compaction | `session.compacting` hook re-injects top 20 memories so context survives compaction |
+| Privacy filtering | `<private>` tag redaction before storage |
+| 5 tools | `memory_store`, `memory_search`, `memory_get`, `memory_update`, `memory_delete` (all return structured JSON) |
 
 ### Installation
 
-**Step 1**: Add to your `opencode.json`:
+**Step 1**: Set environment variables in your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
 
-```jsonc
+```bash
+export OMEM_API_URL="https://api.ourmem.ai"
+export OMEM_API_KEY="YOUR_API_KEY"
+```
+
+**Step 2**: Add to your `opencode.json`:
+
+```json
 {
-  "plugins": {
-    "omem": {
-      "package": "@omem/opencode",
-      "config": {
-        "serverUrl": "http://localhost:8080",
-        "apiKey": "YOUR_API_KEY"
-      }
-    }
-  }
+  "plugin": ["@ourmem/opencode"]
 }
 ```
 
-**Step 2**: Or install from local path (for development):
-
-```jsonc
-{
-  "plugins": {
-    "omem": {
-      "path": "./plugins/opencode",
-      "config": {
-        "serverUrl": "http://localhost:8080",
-        "apiKey": "YOUR_API_KEY"
-      }
-    }
-  }
-}
-```
-
-### Configuration
-
-See [`plugins/opencode/omem.example.jsonc`](../plugins/opencode/omem.example.jsonc) for all options.
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `serverUrl` | `http://localhost:8080` | omem server URL |
-| `apiKey` | _(required)_ | Tenant API key |
+That's it. The plugin reads `OMEM_API_URL` and `OMEM_API_KEY` from environment variables.
 
 ### Verification
 
 ```bash
-# Start OpenCode — you should see memory tools available
+# Start OpenCode — you should see 5 memory tools available
 opencode
 
 # In the session, try:
-# /memory-search "your query"
-# /memory-store "fact to remember"
+# "search my memories for dark mode"
+# "remember that I prefer Rust over Go"
 ```
 
-Check that on session start, recent memories are loaded into context.
+On the first message of each session, relevant memories and your user profile are automatically injected into context.
 
 ---
 
 ## 2. Claude Code
 
-**Package**: Shell hooks + Markdown skills  
-**Runtime**: Bash 4+, curl, python3  
+**Package**: Marketplace plugin (bash hooks + skills + bundled MCP)
+**Version**: 0.2.1
+**Runtime**: Bash 4+, curl, python3
 **Source**: [`plugins/claude-code/`](../plugins/claude-code/)
 
 ### Features
 
-- SessionStart hook: loads 20 most recent memories
-- Stop hook: captures last assistant message (>50 chars)
-- memory-recall skill: search memories by query
-- memory-store skill: manually save a memory
+| Feature | How it works |
+|---------|-------------|
+| 3 hooks | **SessionStart** (load 20 recent memories), **Stop** (smart-ingest last conversation messages), **PreCompact** (save conversation before context compaction) |
+| 2 skills | `memory-recall` (search by query), `memory-store` (manually save a memory) |
+| 9 MCP tools | Bundled `@ourmem/mcp` via `.mcp.json`: `memory_store`, `memory_search`, `memory_list`, `memory_ingest`, `memory_get`, `memory_update`, `memory_forget`, `memory_stats`, `memory_profile` |
+| Graceful degradation | If `OMEM_API_KEY` is not set, hooks skip silently and print setup instructions |
 
 ### Installation
 
 **Step 1**: Set environment variables:
 
 ```bash
-export OMEM_API_URL="http://localhost:8080"
+export OMEM_API_URL="https://api.ourmem.ai"
 export OMEM_API_KEY="YOUR_API_KEY"
 ```
 
 Add these to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) for persistence.
 
-**Step 2**: Install the plugin by symlinking:
+**Step 2**: Install from the marketplace:
 
-```bash
-# Create plugins directory if it doesn't exist
-mkdir -p ~/.claude/plugins
-
-# Symlink the plugin
-ln -s /path/to/omem/plugins/claude-code ~/.claude/plugins/omem
+```
+/plugin marketplace add ourmem/omem
+/plugin install ourmem@ourmem
 ```
 
-Or copy:
+For local development instead:
 
 ```bash
-cp -r /path/to/omem/plugins/claude-code ~/.claude/plugins/omem
+claude --plugin-dir ./plugins/claude-code
 ```
-
-### Configuration
-
-| Environment Variable | Required | Description |
-|---------------------|----------|-------------|
-| `OMEM_API_URL` | Yes | omem server URL |
-| `OMEM_API_KEY` | Yes | Tenant API key |
 
 ### Verification
 
 ```bash
-# Check plugin is detected
-ls ~/.claude/plugins/omem/.claude-plugin/plugin.json
-
-# Start Claude Code — hooks should fire automatically
+# Start Claude Code — hooks fire automatically
 claude
 
 # Test manually:
@@ -148,57 +123,51 @@ curl -s "${OMEM_API_URL}/v1/memories?limit=5" \
   -H "X-API-Key: ${OMEM_API_KEY}" | python3 -m json.tool
 ```
 
-On session start, you should see recent memories injected into the context. On session end, the last assistant message is automatically captured.
+On session start, recent memories are injected into context. On session end, the conversation is sent to smart-ingest for automatic memory extraction. Before context compaction, conversation messages are saved so nothing is lost.
 
 ---
 
 ## 3. OpenClaw
 
-**Package**: `@omem/openclaw`  
-**Runtime**: Node.js  
+**Package**: `@ourmem/openclaw`
+**Version**: 0.2.0
+**Runtime**: Node.js
 **Source**: [`plugins/openclaw/`](../plugins/openclaw/)
 
 ### Features
 
-- Context engine with 7 lifecycle methods
-- Auto-recall via `before_prompt_build` hook
-- Auto-capture via `agent_end` event
-- Server backend integration (OmemMemoryBackend)
-- 5 tools: store, search, get, update, delete
+| Feature | How it works |
+|---------|-------------|
+| 3 hooks | **before_prompt_build** (semantic search using prompt text), **agent_end** (smart-ingest with Claude content block handling), **before_reset** (save user messages before daily reset) |
+| 5 tools | `memory_store`, `memory_search`, `memory_get`, `memory_update`, `memory_delete` (all return structured JSON) |
+| ContextEngine | 7 lifecycle hooks for deep integration with OpenClaw's agent loop |
+| Claude content blocks | Handles Claude's array-of-blocks content format, not just plain strings |
+| Object export | `{id, name, register()}` format for OpenClaw's plugin system |
 
 ### Installation
 
 **Step 1**: Install the plugin:
 
 ```bash
-openclaw plugins install @omem/openclaw
+openclaw plugins install @ourmem/openclaw
 ```
 
-Or for local development:
-
-```bash
-openclaw plugins install ./plugins/openclaw
-```
-
-**Step 2**: Configure in OpenClaw settings:
+**Step 2**: Configure in `openclaw.json`:
 
 ```json
 {
   "plugins": {
-    "@omem/openclaw": {
-      "serverUrl": "http://localhost:8080",
-      "apiKey": "YOUR_API_KEY"
+    "entries": {
+      "ourmem": {
+        "apiUrl": "https://api.ourmem.ai",
+        "apiKey": "YOUR_API_KEY"
+      }
     }
   }
 }
 ```
 
-### Configuration
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `serverUrl` | `http://localhost:8080` | omem server URL |
-| `apiKey` | _(required)_ | Tenant API key |
+The plugin also reads `OMEM_API_URL` and `OMEM_API_KEY` from environment variables as fallback.
 
 ### Verification
 
@@ -209,90 +178,67 @@ openclaw plugins list
 # Start OpenClaw — memory tools should appear
 openclaw
 
-# Test the context engine
-# The plugin should automatically recall relevant memories
-# before each prompt and capture insights after each response
+# The plugin automatically recalls relevant memories before each prompt
+# and captures insights after each agent response
 ```
 
 ---
 
 ## 4. MCP Server
 
-**Package**: `@omem/mcp`  
-**Runtime**: Bun (stdio transport)  
+**Package**: `@ourmem/mcp`
+**Version**: 0.2.0
+**Runtime**: Node.js (stdio transport)
 **Source**: [`plugins/mcp/`](../plugins/mcp/)
 
 ### Features
 
-- Standard MCP protocol (stdio transport)
-- 4 tools: `memory_store`, `memory_search`, `memory_get`, `memory_delete`
-- 1 resource: `memory://profile` (user profile)
-- Works with any MCP-compatible client (Claude Desktop, etc.)
+| Feature | Details |
+|---------|---------|
+| 9 tools | `memory_store`, `memory_search`, `memory_list`, `memory_ingest`, `memory_get`, `memory_update`, `memory_forget`, `memory_stats`, `memory_profile` |
+| 1 resource | `omem://profile` (synthesized user profile) |
+| Standard MCP | Works with Cursor, VS Code Copilot, Claude Desktop, Windsurf, and any MCP-compatible client |
 
 ### Installation
 
-**Option A**: Using `claude mcp add` (Claude Desktop):
+Add to your MCP client's config file:
+
+**Cursor** (`.cursor/mcp.json`), **VS Code** (`.vscode/mcp.json`), **Claude Desktop** (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "ourmem": {
+      "command": "npx",
+      "args": ["-y", "@ourmem/mcp"],
+      "env": {
+        "OMEM_API_URL": "https://api.ourmem.ai",
+        "OMEM_API_KEY": "YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+Or add via CLI (Claude Desktop):
 
 ```bash
-claude mcp add omem -- bunx @omem/mcp
+claude mcp add ourmem -- npx -y @ourmem/mcp
 ```
-
-**Option B**: Manual MCP configuration:
-
-Add to your MCP client's config (e.g., `claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "omem": {
-      "command": "bunx",
-      "args": ["@omem/mcp"],
-      "env": {
-        "OMEM_API_URL": "http://localhost:8080",
-        "OMEM_API_KEY": "YOUR_API_KEY"
-      }
-    }
-  }
-}
-```
-
-**Option C**: From local source:
-
-```json
-{
-  "mcpServers": {
-    "omem": {
-      "command": "bun",
-      "args": ["run", "/path/to/omem/plugins/mcp/src/index.ts"],
-      "env": {
-        "OMEM_API_URL": "http://localhost:8080",
-        "OMEM_API_KEY": "YOUR_API_KEY"
-      }
-    }
-  }
-}
-```
-
-### Configuration
-
-| Environment Variable | Required | Description |
-|---------------------|----------|-------------|
-| `OMEM_API_URL` | Yes | omem server URL |
-| `OMEM_API_KEY` | Yes | Tenant API key |
 
 ### Verification
 
 ```bash
 # Test the MCP server directly
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | \
-  OMEM_API_URL=http://localhost:8080 \
+  OMEM_API_URL=https://api.ourmem.ai \
   OMEM_API_KEY=YOUR_API_KEY \
-  bunx @omem/mcp
+  npx -y @ourmem/mcp
 
-# Should return list of 4 tools
+# Should return list of 9 tools
 ```
 
-In Claude Desktop, you should see the omem tools available in the tools panel.
+In your MCP client, you should see the ourmem tools available in the tools panel.
 
 ---
 
@@ -302,27 +248,34 @@ In Claude Desktop, you should see the omem tools available in the tools panel.
 
 | Problem | Solution |
 |---------|----------|
-| `Connection refused` | Ensure omem-server is running: `curl http://localhost:8080/health` |
+| `Connection refused` | Ensure omem-server is running: `curl https://api.ourmem.ai/health` (or `http://localhost:8080/health` for self-hosted) |
 | `401 Unauthorized` | Check API key is correct and tenant exists |
 | `Plugin not detected` | Verify plugin path/installation, restart the client |
-| `No memories returned` | Check that memories were ingested: `curl /v1/memories?limit=5` |
-| `Embedding errors` | Check `OMEM_EMBED_PROVIDER` config; use `noop` for testing |
+| `No memories returned` | Check that memories were ingested: `curl /v1/memories?limit=5 -H "X-API-Key: YOUR_KEY"` |
+| `Embedding errors` | Check `OMEM_EMBED_PROVIDER` config on the server; use `noop` for testing |
+| `npx` not found | MCP server requires Node.js 18+. Install from [nodejs.org](https://nodejs.org/) |
 
 ### Debug Logging
 
 Enable debug logs on the server:
 
 ```bash
-OMEM_LOG_LEVEL=debug docker-compose up
+RUST_LOG=debug ./omem-server
+```
+
+Or with Docker:
+
+```bash
+docker run -e RUST_LOG=debug -p 8080:8080 ghcr.io/ourmem/omem-server:latest
 ```
 
 ### Testing API Connectivity
 
 ```bash
-# From the plugin's environment, test connectivity:
-curl -sf http://localhost:8080/health && echo "OK" || echo "FAIL"
+# Health check
+curl -sf https://api.ourmem.ai/health && echo "OK" || echo "FAIL"
 
-# Test with API key:
-curl -sf http://localhost:8080/v1/memories?limit=1 \
+# Test with API key
+curl -sf https://api.ourmem.ai/v1/memories?limit=1 \
   -H "X-API-Key: YOUR_API_KEY" && echo "OK" || echo "FAIL"
 ```
