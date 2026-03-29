@@ -28,3 +28,4 @@ __pycache__/
 
 # === 工作状态 ===
 .sisyphus/
+.mcp.json
