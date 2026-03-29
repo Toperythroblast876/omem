@@ -27,6 +27,8 @@ cp "$PROJECT_DIR/Makefile" "$TEMP_DIR/" 2>/dev/null || true
 cp "$PROJECT_DIR/Dockerfile" "$TEMP_DIR/" 2>/dev/null || true
 cp "$PROJECT_DIR/docker-compose.yml" "$TEMP_DIR/" 2>/dev/null || true
 cp "$PROJECT_DIR/docker-compose.prod.yml" "$TEMP_DIR/" 2>/dev/null || true
+cp -r "$PROJECT_DIR/.claude-plugin" "$TEMP_DIR/.claude-plugin" 2>/dev/null || true
+cp "$PROJECT_DIR/.dockerignore" "$TEMP_DIR/" 2>/dev/null || true
 
 # 公开仓库的 .gitignore（排除服务端代码）
 cat > "$TEMP_DIR/.gitignore" << 'PUBIGNORE'
