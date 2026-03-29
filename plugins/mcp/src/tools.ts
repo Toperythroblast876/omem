@@ -419,6 +419,261 @@ export function registerTools(server: McpServer, client: OmemClient): void {
       }
     },
   );
+
+  server.registerTool(
+    "space_create",
+    {
+      title: "Create Space",
+      description:
+        "Create a shared space (team or organization) for sharing memories across users and agents.",
+      inputSchema: {
+        name: z.string().describe("Name of the space"),
+        space_type: z
+          .enum(["team", "organization"])
+          .describe("Type of space: 'team' or 'organization'"),
+        members: z
+          .array(
+            z.object({
+              user_id: z.string().describe("User/tenant ID to add"),
+              role: z
+                .enum(["admin", "member", "reader"])
+                .describe("Member role"),
+            }),
+          )
+          .optional()
+          .describe("Initial members to add to the space"),
+      },
+    },
+    async ({ name, space_type, members }) => {
+      try {
+        const space = await client.createSpace(name, space_type, members);
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Space created:\n${JSON.stringify(space, null, 2)}`,
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Failed to create space: ${(err as Error).message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "space_list",
+    {
+      title: "List Spaces",
+      description:
+        "List all spaces you own or are a member of, including personal, team, and organization spaces.",
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        const spaces = await client.listSpaces();
+        if (spaces.length === 0) {
+          return {
+            content: [
+              { type: "text" as const, text: "No spaces found." },
+            ],
+          };
+        }
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(spaces, null, 2),
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Failed to list spaces: ${(err as Error).message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "space_add_member",
+    {
+      title: "Add Space Member",
+      description:
+        "Add a user to an existing shared space with a specified role.",
+      inputSchema: {
+        space_id: z.string().describe("The space ID to add the member to"),
+        user_id: z.string().describe("The user/tenant ID to add"),
+        role: z
+          .enum(["admin", "member", "reader"])
+          .describe("Role for the new member"),
+      },
+    },
+    async ({ space_id, user_id, role }) => {
+      try {
+        const result = await client.addSpaceMember(space_id, user_id, role);
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Member added:\n${JSON.stringify(result, null, 2)}`,
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Failed to add member: ${(err as Error).message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "memory_share",
+    {
+      title: "Share Memory",
+      description:
+        "Share a memory to a team or organization space. Creates a copy with full provenance tracking and vector embedding.",
+      inputSchema: {
+        memory_id: z.string().describe("The memory ID to share"),
+        target_space: z
+          .string()
+          .describe("The target space ID to share the memory to"),
+      },
+    },
+    async ({ memory_id, target_space }) => {
+      try {
+        const result = await client.shareMemory(memory_id, target_space);
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Memory shared:\n${JSON.stringify(result, null, 2)}`,
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Failed to share memory: ${(err as Error).message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "memory_pull",
+    {
+      title: "Pull Memory",
+      description:
+        "Pull a shared memory from a team/organization space into your personal space.",
+      inputSchema: {
+        memory_id: z.string().describe("The memory ID to pull"),
+        source_space: z
+          .string()
+          .describe("The source space ID to pull the memory from"),
+        visibility: z
+          .string()
+          .optional()
+          .describe("Visibility of the pulled copy (optional)"),
+      },
+    },
+    async ({ memory_id, source_space, visibility }) => {
+      try {
+        const result = await client.pullMemory(
+          memory_id,
+          source_space,
+          visibility,
+        );
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Memory pulled:\n${JSON.stringify(result, null, 2)}`,
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Failed to pull memory: ${(err as Error).message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "memory_reshare",
+    {
+      title: "Reshare Memory",
+      description:
+        "Refresh a stale shared copy with the latest content and vector from the source memory.",
+      inputSchema: {
+        memory_id: z
+          .string()
+          .describe("The shared copy memory ID to refresh"),
+        target_space: z
+          .string()
+          .optional()
+          .describe(
+            "Target space containing the copy (optional — searches all spaces if omitted)",
+          ),
+      },
+    },
+    async ({ memory_id, target_space }) => {
+      try {
+        const result = await client.reshareMemory(memory_id, target_space);
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Memory reshared:\n${JSON.stringify(result, null, 2)}`,
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Failed to reshare memory: ${(err as Error).message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
 }
 
 export function registerResources(

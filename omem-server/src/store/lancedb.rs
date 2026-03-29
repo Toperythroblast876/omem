@@ -4,7 +4,7 @@ use std::sync::Arc;
 use arrow_array::types::Float32Type;
 use arrow_array::{
     Array, FixedSizeListArray, Float32Array, Int32Array, RecordBatch, RecordBatchIterator,
-    StringArray,
+    StringArray, UInt64Array,
 };
 use arrow_schema::{DataType, Field, Schema};
 use futures::TryStreamExt;
@@ -141,6 +141,8 @@ impl LanceStore {
             Field::new("visibility", DataType::Utf8, false),
             Field::new("owner_agent_id", DataType::Utf8, false),
             Field::new("provenance", DataType::Utf8, true),
+            Field::new("version", DataType::UInt64, true),
+            Field::new("provenance_source_id", DataType::Utf8, true),
         ]))
     }
 
@@ -173,6 +175,11 @@ impl LanceStore {
             vec![Some(vec_data.into_iter().map(Some).collect::<Vec<_>>())],
             VECTOR_DIM,
         );
+
+        let provenance_source_id: Option<&str> = memory
+            .provenance
+            .as_ref()
+            .map(|p| p.shared_from_memory.as_str());
 
         RecordBatch::try_new(
             Self::schema(),
@@ -208,6 +215,8 @@ impl LanceStore {
                 Arc::new(StringArray::from(vec![memory.visibility.as_str()])),
                 Arc::new(StringArray::from(vec![memory.owner_agent_id.as_str()])),
                 Arc::new(StringArray::from(vec![option_str(&provenance_json)])),
+                Arc::new(UInt64Array::from(vec![memory.version])),
+                Arc::new(StringArray::from(vec![provenance_source_id])),
             ],
         )
         .map_err(|e| OmemError::Storage(format!("failed to build RecordBatch: {e}")))
@@ -311,6 +320,17 @@ impl LanceStore {
             serde_json::from_str(&provenance_str).ok()
         };
 
+        let version: Option<u64> = batch
+            .column_by_name("version")
+            .and_then(|col| col.as_any().downcast_ref::<UInt64Array>())
+            .and_then(|arr| {
+                if arr.is_null(row) {
+                    None
+                } else {
+                    Some(arr.value(row))
+                }
+            });
+
         Ok(Memory {
             id: get_str("id")?,
             content: get_str("content")?,
@@ -340,6 +360,7 @@ impl LanceStore {
             visibility: get_str_or("visibility", "global"),
             owner_agent_id: get_str_or("owner_agent_id", ""),
             provenance,
+            version,
         })
     }
 
@@ -417,18 +438,63 @@ impl LanceStore {
         Ok(memories.into_iter().next())
     }
 
+    /// Retrieve only the vector embedding for a memory by its ID.
+    /// Returns `Ok(None)` if the memory is not found or has been deleted.
+    pub async fn get_vector_by_id(&self, id: &str) -> Result<Option<Vec<f32>>, OmemError> {
+        let table = self.open_table().await?;
+        let batches: Vec<RecordBatch> = table
+            .query()
+            .only_if(format!(
+                "id = '{}' AND state != 'deleted'",
+                escape_sql(id)
+            ))
+            .limit(1)
+            .execute()
+            .await
+            .map_err(|e| OmemError::Storage(format!("vector query failed: {e}")))?
+            .try_collect()
+            .await
+            .map_err(|e| OmemError::Storage(format!("collect failed: {e}")))?;
+
+        if batches.is_empty() || batches[0].num_rows() == 0 {
+            return Ok(None);
+        }
+
+        let batch = &batches[0];
+        let col = batch
+            .column_by_name("vector")
+            .ok_or_else(|| OmemError::Storage("missing vector column".to_string()))?;
+        let fsl = col
+            .as_any()
+            .downcast_ref::<FixedSizeListArray>()
+            .ok_or_else(|| {
+                OmemError::Storage("vector column is not FixedSizeList".to_string())
+            })?;
+        let inner = fsl.value(0);
+        let float_arr = inner
+            .as_any()
+            .downcast_ref::<Float32Array>()
+            .ok_or_else(|| OmemError::Storage("vector inner is not Float32".to_string()))?;
+        Ok(Some(float_arr.values().to_vec()))
+    }
+
     pub async fn update(
         &self,
         memory: &Memory,
         vector: Option<&[f32]>,
     ) -> Result<(), OmemError> {
+        // Auto-increment version on every update
+        let mut mem = memory.clone();
+        mem.version = Some(mem.version.unwrap_or(0) + 1);
+        mem.updated_at = chrono::Utc::now().to_rfc3339();
+
         let table = self.open_table().await?;
         table
-            .delete(&format!("id = '{}'", escape_sql(&memory.id)))
+            .delete(&format!("id = '{}'", escape_sql(&mem.id)))
             .await
             .map_err(|e| OmemError::Storage(format!("delete for update failed: {e}")))?;
 
-        let batch = Self::memory_to_batch(memory, vector)?;
+        let batch = Self::memory_to_batch(&mem, vector)?;
         let reader = RecordBatchIterator::new(vec![Ok(batch)], Self::schema());
         table
             .add(Box::new(reader) as Box<dyn arrow_array::RecordBatchReader + Send>)
@@ -681,7 +747,7 @@ impl LanceStore {
     ) -> Result<Vec<Memory>, OmemError> {
         let table = self.open_table().await?;
         let filter = format!(
-            "state != 'deleted' AND provenance LIKE '%\"shared_from_memory\":\"{}\"%'",
+            "state != 'deleted' AND provenance_source_id = '{}'",
             escape_sql(source_memory_id)
         );
         let batches: Vec<RecordBatch> = table

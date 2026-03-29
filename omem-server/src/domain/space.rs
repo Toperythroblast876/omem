@@ -92,6 +92,8 @@ pub struct Provenance {
     pub shared_by_agent: String,
     pub shared_at: String,
     pub original_created_at: String,
+    #[serde(default)]
+    pub source_version: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -101,6 +103,7 @@ pub enum SharingAction {
     Pull,
     Unshare,
     BatchShare,
+    Reshare,
 }
 
 impl fmt::Display for SharingAction {
@@ -110,6 +113,7 @@ impl fmt::Display for SharingAction {
             SharingAction::Pull => write!(f, "pull"),
             SharingAction::Unshare => write!(f, "unshare"),
             SharingAction::BatchShare => write!(f, "batch_share"),
+            SharingAction::Reshare => write!(f, "reshare"),
         }
     }
 }
@@ -235,6 +239,7 @@ mod tests {
             shared_by_agent: "agent-001".to_string(),
             shared_at: "2025-01-01T00:00:00Z".to_string(),
             original_created_at: "2024-12-01T00:00:00Z".to_string(),
+            source_version: Some(3),
         };
 
         let json = serde_json::to_string(&prov).expect("serialize");

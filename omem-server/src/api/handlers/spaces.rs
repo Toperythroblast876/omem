@@ -74,7 +74,7 @@ pub async fn create_space(
         SpaceType::Team => "team",
         SpaceType::Organization => "org",
     };
-    let id = format!("{}:{}", prefix, uuid::Uuid::new_v4());
+    let id = format!("{}/{}", prefix, uuid::Uuid::new_v4());
 
     let mut members = vec![SpaceMember {
         user_id: auth.tenant_id.clone(),

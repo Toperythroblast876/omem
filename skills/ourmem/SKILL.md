@@ -18,6 +18,8 @@ description: |
   - "what did I say last time"
   - "import memories"
   - "share memories"
+  - "share with user"
+  - "share memories to someone"
   - "team memory"
   - "shared space"
   - "persistent memory"
@@ -70,6 +72,8 @@ Common triggers include:
 - "recall my preferences"
 - "forget that"
 - "share this with my team"
+- "share this with Bob"
+- "share my memories with another user"
 - "import memories"
 - "setup memory"
 - "memory not working"
@@ -441,6 +445,45 @@ Proactively suggest Spaces when:
 
 For Space API operations (create, add members, share, pull, batch share), READ `references/api-quick-ref.md`.
 
+### Cross-User Sharing (Convenience)
+
+When a user says "share this with Bob" or "share my memories with another user", use the convenience APIs that handle space creation automatically:
+
+**Share a single memory to another user:**
+
+The agent should call `share-to-user` which auto-creates a bridging Team Space if needed, adds the target user as a member, and shares the memory in one step.
+
+```bash
+curl -sX POST "$API_URL/v1/memories/MEMORY_ID/share-to-user" \
+  -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
+  -d '{"target_user": "TARGET_USER_TENANT_ID"}'
+# Returns: { "space_id": "team/xxx", "shared_copy_id": "yyy", "space_created": true }
+```
+
+**Share all matching memories to another user:**
+
+When the user wants to share everything (or a filtered subset) with someone:
+
+```bash
+curl -sX POST "$API_URL/v1/memories/share-all-to-user" \
+  -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
+  -d '{"target_user": "TARGET_USER_TENANT_ID", "filters": {"min_importance": 0.7}}'
+# Returns: { "space_id": "team/xxx", "space_created": false, "total": 80, "shared": 15, ... }
+```
+
+**Agent workflow:**
+
+1. User says "share this with Bob" → agent needs Bob's tenant ID (API key)
+2. If the agent doesn't know Bob's ID, ask the user for it
+3. Call `share-to-user` with the memory ID and Bob's tenant ID
+4. Report: "Shared to Bob via team space {space_id}. Bob can now find it when searching."
+
+Proactively suggest cross-user sharing when:
+
+- User mentions sharing with a specific person ("send this to Alice")
+- User wants another user's agent to have access to certain memories
+- User asks to collaborate with someone on a project
+
 ---
 
 ## Memory Import
@@ -566,8 +609,10 @@ Auth: `X-API-Key: <api-key>` header on all requests (except `/health` and `POST 
 | GET | `/v1/spaces` | List accessible spaces |
 | POST | `/v1/spaces/:id/members` | Add member to space |
 | POST | `/v1/memories/:id/share` | Share to a space |
+| POST | `/v1/memories/:id/share-to-user` | One-step share to another user (auto-creates bridging space) |
 | POST | `/v1/memories/:id/pull` | Pull from another space |
 | POST | `/v1/memories/batch-share` | Batch share multiple memories |
+| POST | `/v1/memories/share-all-to-user` | Bulk share to another user (auto-creates bridging space) |
 | POST | `/v1/files` | Upload file (PDF/image/video/code) |
 | GET | `/v1/stats` | Global stats |
 | GET | `/v1/stats/*` | Spaces, sharing, agents, tags, decay, relations, config |

@@ -23,3 +23,18 @@ pub struct AppState {
 pub fn personal_space_id(tenant_id: &str) -> String {
     format!("personal/{tenant_id}")
 }
+
+/// Normalize a space ID: convert legacy colon-separated format to slash format.
+/// e.g. "team:abc" → "team/abc", "org:xyz" → "org/xyz"
+/// Already-slash IDs are returned unchanged.
+pub fn normalize_space_id(space_id: &str) -> String {
+    // Only convert the first colon after known prefixes (team, org, personal)
+    if space_id.starts_with("team:")
+        || space_id.starts_with("org:")
+        || space_id.starts_with("personal:")
+    {
+        space_id.replacen(':', "/", 1)
+    } else {
+        space_id.to_string()
+    }
+}

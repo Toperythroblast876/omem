@@ -89,7 +89,13 @@ Weibull decay model manages the memory lifecycle — core memories persist, peri
 | **Platforms** | 4 platforms | OpenCode, Claude Code, OpenClaw, MCP Server |
 | **Sharing** | Space-based sharing | Personal / Team / Organization with provenance |
 | | Provenance tracking | Every shared memory carries full lineage |
-| | Quality-gated auto-sharing | Rules filter by importance, category, tags |
+| | Quality-gated auto-sharing | Rules fire on memory creation (async, non-blocking) |
+| | Vector-enabled shared copies | Shared copies carry source vector embeddings for full search |
+| | Idempotent sharing | Re-sharing returns existing copy (no duplicates) |
+| | Version tracking | Memories track version counter, shared copies detect staleness via `?check_stale=true` |
+| | Re-share stale copies | Refresh outdated shared copies with latest source content and vector |
+| | Convenience sharing | One-step cross-user share (`share-to-user`) and bulk share (`share-all-to-user`) with auto-bridging |
+| | Organization management | One-step org creation (`org/setup`) and publish (`org/publish`) with auto-share rules |
 | | Cross-space search | Search across all accessible spaces at once |
 | **Ingestion** | Smart dedup | 7 decisions: CREATE, MERGE, SKIP, SUPERSEDE, SUPPORT, CONTEXTUALIZE, CONTRADICT |
 | | Noise filter | Regex + vector prototypes + feedback learning |
@@ -128,9 +134,9 @@ Most AI memory systems trap knowledge in silos. ourmem's three-tier Space archit
 | **Example** | Coder + Writer share preferences | Backend team shares arch decisions | Tech standards, security policies |
 | **Access** | Owner's agents only | Team members | All org members (read-only) |
 
-**Provenance-tracked sharing** — every shared memory carries its lineage: who shared it, when, and where it came from.
+**Provenance-tracked sharing** — every shared memory carries its lineage: who shared it, when, and where it came from. Shared copies include the source memory's vector embedding, so they're fully searchable in the target space.
 
-**Quality-gated auto-sharing** — rules filter by importance, category, and tags. Only high-value insights cross space boundaries.
+**Quality-gated auto-sharing** — rules filter by importance, category, and tags. Rules fire automatically when new memories are created. Only high-value insights cross space boundaries.
 
 ## How It Works
 
@@ -376,6 +382,7 @@ Full API reference (35 endpoints): [docs/API.md](docs/API.md)
 |----------|-------------|
 | [docs/API.md](docs/API.md) | Complete REST API reference |
 | [docs/PIPELINE.md](docs/PIPELINE.md) | Memory pipeline architecture — storage, retrieval, and plugin integration flows |
+| [docs/SHARING.md](docs/SHARING.md) | Memory sharing architecture, flows, and tutorials |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Docker & AWS deployment guide |
 | [docs/PLUGINS.md](docs/PLUGINS.md) | Plugin installation for all 4 platforms |
 | [skills/ourmem/SKILL.md](skills/ourmem/SKILL.md) | AI agent onboarding skill |

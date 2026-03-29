@@ -149,6 +149,88 @@ export class OmemClient {
   async getStats(): Promise<unknown> {
     return this.request("/v1/stats");
   }
+
+  // ── Sharing ──────────────────────────────────────────────
+
+  async createSpace(
+    name: string,
+    spaceType: string,
+    members?: Array<{ user_id: string; role: string }>,
+  ): Promise<unknown> {
+    const result = await this.request("/v1/spaces", {
+      method: "POST",
+      body: JSON.stringify({ name, space_type: spaceType, members }),
+    });
+    if (!result) throw new Error("Failed to create space");
+    return result;
+  }
+
+  async listSpaces(): Promise<unknown[]> {
+    const res = await this.request<{ spaces: unknown[] }>("/v1/spaces");
+    return res?.spaces ?? [];
+  }
+
+  async addSpaceMember(
+    spaceId: string,
+    userId: string,
+    role: string,
+  ): Promise<unknown> {
+    const result = await this.request(
+      `/v1/spaces/${encodeURIComponent(spaceId)}/members`,
+      {
+        method: "POST",
+        body: JSON.stringify({ user_id: userId, role }),
+      },
+    );
+    if (!result) throw new Error("Failed to add member");
+    return result;
+  }
+
+  async shareMemory(
+    memoryId: string,
+    targetSpace: string,
+  ): Promise<unknown> {
+    const result = await this.request(
+      `/v1/memories/${encodeURIComponent(memoryId)}/share`,
+      {
+        method: "POST",
+        body: JSON.stringify({ target_space: targetSpace }),
+      },
+    );
+    if (!result) throw new Error("Failed to share memory");
+    return result;
+  }
+
+  async pullMemory(
+    memoryId: string,
+    sourceSpace: string,
+    visibility?: string,
+  ): Promise<unknown> {
+    const result = await this.request(
+      `/v1/memories/${encodeURIComponent(memoryId)}/pull`,
+      {
+        method: "POST",
+        body: JSON.stringify({ source_space: sourceSpace, visibility }),
+      },
+    );
+    if (!result) throw new Error("Failed to pull memory");
+    return result;
+  }
+
+  async reshareMemory(
+    memoryId: string,
+    targetSpace?: string,
+  ): Promise<unknown> {
+    const result = await this.request(
+      `/v1/memories/${encodeURIComponent(memoryId)}/reshare`,
+      {
+        method: "POST",
+        body: JSON.stringify({ target_space: targetSpace }),
+      },
+    );
+    if (!result) throw new Error("Failed to reshare memory");
+    return result;
+  }
 }
 
 export function createClient(): OmemClient {

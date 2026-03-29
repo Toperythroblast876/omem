@@ -91,6 +91,24 @@ curl -sX POST $API_URL/v1/memories/MEMORY_ID/pull \
   -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
   -d '{"source_space": "team/SPACE_UUID"}'
 
+# Reshare (refresh stale shared copy)
+curl -sX POST $API_URL/v1/memories/COPY_ID/reshare \
+  -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
+  -d '{"target_space": "team/SPACE_UUID"}'
+
+# Share to user (one-step cross-user share, auto-creates bridging space)
+curl -sX POST $API_URL/v1/memories/MEMORY_ID/share-to-user \
+  -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
+  -d '{"target_user": "TARGET_USER_TENANT_ID"}'
+
+# Share all to user (bulk cross-user share with filters)
+curl -sX POST $API_URL/v1/memories/share-all-to-user \
+  -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
+  -d '{"target_user": "TARGET_USER_TENANT_ID", "filters": {"min_importance": 0.7}}'
+
+# Search with stale detection
+curl -s "$API_URL/v1/memories/search?q=architecture&space=all&check_stale=true" -H "X-API-Key: $KEY"
+
 ```
 
 ## File Upload

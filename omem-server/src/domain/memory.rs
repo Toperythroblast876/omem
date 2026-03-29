@@ -37,6 +37,8 @@ pub struct Memory {
     pub visibility: String,
     pub owner_agent_id: String,
     pub provenance: Option<Provenance>,
+    #[serde(default)]
+    pub version: Option<u64>,
 }
 
 impl Memory {
@@ -77,6 +79,7 @@ impl Memory {
             visibility: "global".to_string(),
             owner_agent_id: String::new(),
             provenance: None,
+            version: Some(1),
         }
     }
 }
@@ -123,6 +126,7 @@ mod tests {
         assert_eq!(mem.visibility, "global");
         assert!(mem.owner_agent_id.is_empty());
         assert!(mem.provenance.is_none());
+        assert_eq!(mem.version, Some(1));
     }
 
     #[test]

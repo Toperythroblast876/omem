@@ -612,7 +612,7 @@ pub async fn get_sharing_stats(
 
     for event in &recent_events {
         match event.action {
-            SharingAction::Share | SharingAction::BatchShare => {
+            SharingAction::Share | SharingAction::BatchShare | SharingAction::Reshare => {
                 total_shares += 1;
                 unique_sharers.insert(event.user_id.clone());
                 *flow_edges
@@ -1108,6 +1108,7 @@ mod tests {
             shared_by_agent: "coder".to_string(),
             shared_at: chrono::Utc::now().to_rfc3339(),
             original_created_at: m1.created_at.clone(),
+            source_version: m1.version,
         });
         store.create(&m2, None).await.expect("m2");
 

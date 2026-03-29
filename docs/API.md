@@ -46,61 +46,6 @@ X-Agent-Id: coder
 ```
 
 | HTTP 状态码 | error.code | 触发条件 |
-|-------------|------------|----------|
-| 400 | `validation_error` | 请求参数缺失或格式错误 |
-| 401 | `unauthorized` | 缺少 API Key、Key 无效、租户已停用 |
-| 404 | `not_found` | 资源不存在 |
-| 429 | `rate_limited` | 请求频率超限 |
-| 500 | `internal_error` | 存储/嵌入/LLM/内部错误 |
-
-### 数据类型说明
-
-| 类型 | 格式 | 示例 |
-|------|------|------|
-| UUID | v4 字符串 | `"550e8400-e29b-41d4-a716-446655440000"` |
-| 时间戳 | ISO 8601 / RFC 3339 | `"2025-01-15T10:30:00+00:00"` |
-| 浮点数 | 32 位 | `0.85` |
-| 布尔值 | JSON boolean | `true` / `false` |
-
----
-
-## 一、租户管理
-
-### POST /v1/tenants
-
-创建新租户。返回的 `id` 同时作为 API Key 使用。创建租户时会自动创建一个 personal 类型的 Space。
-
-**认证**: 不需要
-
-**Request Body**:
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| name | string | 是 | 租户名称 |
-
-```json
-{
-  "name": "my-workspace"
-}
-```
-
-**Response** `200 OK`:
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "api_key": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "active"
-}
-```
-
-> `id` 和 `api_key` 是同一个 UUID。后续所有请求用这个值作为 `X-API-Key`。
-
-**错误**:
-
-| 状态码 | 条件 |
-|--------|------|
-| 400 | `name` 为空 |
 
 **curl 示例**:
 
@@ -208,7 +153,8 @@ curl -X POST http://localhost:8080/v1/tenants \
   "space_id": "",
   "visibility": "global",
   "owner_agent_id": "",
-  "provenance": null
+  "provenance": null,
+  "version": 1
 }
 ```
 
@@ -260,6 +206,7 @@ curl -X POST http://localhost:8080/v1/memories \
 | min_score | float | 否 | null | 最低相关性分数 |
 | include_trace | boolean | 否 | false | 是否返回检索管线追踪信息 |
 | space | string | 否 | null | 搜索的 Space 范围。`"all"` 搜索所有，逗号分隔指定多个 Space ID |
+| check_stale | boolean | 否 | false | 对共享副本检测过时状态。启用后，有 provenance 的结果会附带 `stale_info` 对象 |
 
 **Response** `200 OK`:
 
@@ -295,9 +242,11 @@ curl -X POST http://localhost:8080/v1/memories \
         "space_id": "personal/550e8400-e29b-41d4-a716-446655440000",
         "visibility": "global",
         "owner_agent_id": "coder",
-        "provenance": null
+        "provenance": null,
+        "version": 3
       },
-      "score": 0.87
+      "score": 0.87,
+      "stale_info": null
     }
   ],
   "trace": null
@@ -332,6 +281,46 @@ curl -X POST http://localhost:8080/v1/memories \
 }
 ```
 
+**带 `check_stale=true` 的响应**（共享副本会附带 `stale_info`）：
+
+当搜索结果中包含共享副本（有 `provenance` 的记忆），且启用了 `check_stale=true`，每条结果会附带 `stale_info` 对象。不启用时 `stale_info` 为 `null`，不产生额外 I/O。
+
+```json
+{
+  "results": [
+    {
+      "memory": {
+        "id": "770e8400-e29b-41d4-a716-446655440000",
+        "content": "Use hexagonal architecture for new services",
+        "provenance": {
+          "shared_from_space": "personal/550e8400-e29b-41d4-a716-446655440000",
+          "shared_from_memory": "660e8400-e29b-41d4-a716-446655440000",
+          "shared_by_user": "550e8400-e29b-41d4-a716-446655440000",
+          "shared_by_agent": "coder",
+          "shared_at": "2025-01-20T14:00:00+00:00",
+          "original_created_at": "2025-01-10T09:00:00+00:00",
+          "source_version": 1
+        },
+        "version": 1
+      },
+      "score": 0.82,
+      "stale_info": {
+        "is_stale": true,
+        "source_version": 1,
+        "current_source_version": 3,
+        "source_deleted": false
+      }
+    }
+  ]
+}
+```
+
+> `stale_info` 字段说明：
+> - `is_stale`: 副本是否过时（源记忆版本高于副本记录的 source_version）
+> - `source_version`: 副本创建时源记忆的版本号
+> - `current_source_version`: 源记忆当前版本号（如果源已删除则为 null）
+> - `source_deleted`: 源记忆是否已被删除
+
 **错误**:
 
 | 状态码 | 条件 |
@@ -356,6 +345,10 @@ curl "http://localhost:8080/v1/memories/search?q=architecture&space=team/backend
 # 搜索所有 Space
 curl "http://localhost:8080/v1/memories/search?q=architecture&space=all" \
   -H "X-API-Key: YOUR_API_KEY"
+
+# 检测共享副本过时状态
+curl "http://localhost:8080/v1/memories/search?q=architecture&space=all&check_stale=true" \
+  -H "X-API-Key: YOUR_API_KEY"
 ```
 
 ---
@@ -372,9 +365,42 @@ curl "http://localhost:8080/v1/memories/search?q=architecture&space=all" \
 |------|------|------|
 | id | string | 记忆 UUID |
 
+**Query 参数**:
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| check_stale | boolean | 否 | false | 对共享副本检测过时状态。启用后返回 `stale_info` 对象 |
+
 **Response** `200 OK`:
 
-返回完整的 Memory 对象（结构同上）。
+返回完整的 Memory 对象（结构同上）。所有记忆对象包含 `version` 字段（整数，每次更新自增）。
+
+当 `check_stale=true` 且该记忆是共享副本（有 `provenance`）时，响应中额外包含 `stale_info` 对象：
+
+```json
+{
+  "id": "770e8400-e29b-41d4-a716-446655440000",
+  "content": "Use hexagonal architecture for new services",
+  "version": 1,
+  "provenance": {
+    "shared_from_space": "personal/550e8400-e29b-41d4-a716-446655440000",
+    "shared_from_memory": "660e8400-e29b-41d4-a716-446655440000",
+    "shared_by_user": "550e8400-e29b-41d4-a716-446655440000",
+    "shared_by_agent": "coder",
+    "shared_at": "2025-01-20T14:00:00+00:00",
+    "original_created_at": "2025-01-10T09:00:00+00:00",
+    "source_version": 1
+  },
+  "stale_info": {
+    "is_stale": true,
+    "source_version": 1,
+    "current_source_version": 3,
+    "source_deleted": false
+  }
+}
+```
+
+> 不传 `check_stale` 或设为 `false` 时，不会查询源记忆版本，`stale_info` 不出现在响应中。
 
 **错误**:
 
@@ -385,7 +411,12 @@ curl "http://localhost:8080/v1/memories/search?q=architecture&space=all" \
 **curl 示例**:
 
 ```bash
+# 获取记忆
 curl http://localhost:8080/v1/memories/550e8400-e29b-41d4-a716-446655440000 \
+  -H "X-API-Key: YOUR_API_KEY"
+
+# 获取记忆并检测过时状态
+curl "http://localhost:8080/v1/memories/550e8400-e29b-41d4-a716-446655440000?check_stale=true" \
   -H "X-API-Key: YOUR_API_KEY"
 ```
 
@@ -393,7 +424,7 @@ curl http://localhost:8080/v1/memories/550e8400-e29b-41d4-a716-446655440000 \
 
 ### PUT /v1/memories/{id}
 
-更新记忆的内容、标签或状态。更新 `content` 会触发重新嵌入。
+更新记忆的内容、标签或状态。更新 `content` 会触发重新嵌入。每次更新会自动递增 `version` 字段。
 
 **认证**: 需要 `X-API-Key`
 
@@ -637,7 +668,8 @@ curl -X POST http://localhost:8080/v1/imports/IMPORT_ID/rollback \
       "space_id": "",
       "visibility": "global",
       "owner_agent_id": "",
-      "provenance": null
+      "provenance": null,
+      "version": 1
     }
   ],
   "total_count": 42,
@@ -820,7 +852,7 @@ curl -X POST http://localhost:8080/v1/spaces \
 
 ### GET /v1/spaces
 
-列出当前用户所属的所有 Space。
+列出当前用户所属的所有 Space，包括用户作为 owner 的空间和作为 member 加入的空间。
 
 **认证**: 需要 `X-API-Key`
 
@@ -1117,9 +1149,17 @@ curl -X PUT http://localhost:8080/v1/spaces/team/660e8400-e29b-41d4-a716-4466554
 
 ## 五、记忆分享
 
+> **共享副本携带向量嵌入：** 分享操作会将源记忆的向量嵌入复制到目标 Space 的副本中，确保共享副本在目标 Space 中可通过向量搜索找到。
+>
+> **幂等分享：** 将同一条记忆重复分享到同一个 Space 不会创建重复副本。第二次分享会返回已有副本（`200 OK`），而非创建新副本（`201 Created`）。
+>
+> **自动分享规则在记忆创建时触发：** 通过 `POST /v1/memories`（直接创建模式）创建记忆后，系统会异步检查所有匹配的自动分享规则并执行分享。此过程为 fire-and-forget，不会阻塞创建响应，也不会因自动分享失败而影响记忆创建。
+>
+> **版本追踪与过时检测：** 每条记忆有 `version` 字段（从 1 开始，每次更新自增）。共享副本的 `provenance.source_version` 记录分享时源记忆的版本。通过 `?check_stale=true` 查询参数可检测副本是否过时，过时副本可通过 `POST /v1/memories/{id}/reshare` 刷新。
+
 ### POST /v1/memories/{id}/share
 
-将记忆分享到目标 Space。在目标 Space 中创建一份副本，并记录 provenance（来源追踪）。
+将记忆分享到目标 Space。在目标 Space 中创建一份副本（包含源记忆的向量嵌入），并记录 provenance（来源追踪）。
 
 **认证**: 需要 `X-API-Key`
 
@@ -1143,9 +1183,11 @@ curl -X PUT http://localhost:8080/v1/spaces/team/660e8400-e29b-41d4-a716-4466554
 }
 ```
 
-**Response** `201 Created`:
+**Response** `201 Created`（首次分享）/ `200 OK`（副本已存在）:
 
-返回在目标 Space 中创建的记忆副本（完整 Memory 对象），其中 `provenance` 字段记录了来源信息：
+返回在目标 Space 中创建的记忆副本（完整 Memory 对象），其中 `provenance` 字段记录了来源信息。副本携带源记忆的向量嵌入，可在目标 Space 中通过向量搜索找到。
+
+如果该记忆已经被分享到目标 Space（存在相同 provenance 的副本），返回 `200 OK` 和已有副本，不会创建重复副本。
 
 ```json
 {
@@ -1182,10 +1224,19 @@ curl -X PUT http://localhost:8080/v1/spaces/team/660e8400-e29b-41d4-a716-4466554
     "shared_by_user": "550e8400-e29b-41d4-a716-446655440000",
     "shared_by_agent": "coder",
     "shared_at": "2025-01-20T14:00:00+00:00",
-    "original_created_at": "2025-01-10T09:00:00+00:00"
-  }
+    "original_created_at": "2025-01-10T09:00:00+00:00",
+    "source_version": 1
+  },
+  "version": 1
 }
 ```
+
+**状态码**:
+
+| 状态码 | 条件 |
+|--------|------|
+| 200 | 该记忆已分享到目标 Space，返回已有副本（幂等） |
+| 201 | 首次分享，创建新副本 |
 
 **错误**:
 
@@ -1209,7 +1260,7 @@ curl -X POST http://localhost:8080/v1/memories/660e8400-e29b-41d4-a716-446655440
 
 ### POST /v1/memories/{id}/pull
 
-从其他 Space 拉取记忆到个人空间。
+从其他 Space 拉取记忆到个人空间。拉取的副本携带源记忆的向量嵌入，可在个人空间中通过向量搜索找到。
 
 **认证**: 需要 `X-API-Key`
 
@@ -1312,7 +1363,7 @@ curl -X POST http://localhost:8080/v1/memories/660e8400-e29b-41d4-a716-446655440
 
 ### POST /v1/memories/batch-share
 
-批量分享多条记忆到目标 Space。部分失败不影响其他记忆的分享。
+批量分享多条记忆到目标 Space。部分失败不影响其他记忆的分享。每条副本携带源记忆的向量嵌入。已存在的副本会被自动跳过（计入 succeeded 列表，不会创建重复副本）。
 
 **认证**: 需要 `X-API-Key`
 
@@ -1384,9 +1435,83 @@ curl -X POST http://localhost:8080/v1/memories/batch-share \
 
 ---
 
+### POST /v1/memories/{id}/reshare
+
+刷新过时的共享副本。从源记忆获取最新内容和向量嵌入，创建新副本替换旧副本。用于更新通过 `check_stale=true` 检测到的过时共享副本。
+
+**认证**: 需要 `X-API-Key`
+
+**路径参数**:
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| id | string | 共享副本的记忆 UUID |
+
+**Request Body**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| target_space | string | 否 | 目标 Space ID。不传时在当前用户可访问的空间中查找该副本 |
+
+```json
+{
+  "target_space": "team/backend"
+}
+```
+
+**Response** `200 OK`:
+
+返回更新后的记忆副本（完整 Memory 对象）。旧副本被软删除，新副本包含源记忆的最新内容、向量嵌入和当前版本号。
+
+```json
+{
+  "id": "880e8400-e29b-41d4-a716-446655440000",
+  "content": "Use hexagonal architecture with ports and adapters pattern",
+  "version": 1,
+  "provenance": {
+    "shared_from_space": "personal/550e8400-e29b-41d4-a716-446655440000",
+    "shared_from_memory": "660e8400-e29b-41d4-a716-446655440000",
+    "shared_by_user": "550e8400-e29b-41d4-a716-446655440000",
+    "shared_by_agent": "coder",
+    "shared_at": "2025-01-22T10:00:00+00:00",
+    "original_created_at": "2025-01-10T09:00:00+00:00",
+    "source_version": 3
+  },
+  "space_id": "team/backend"
+}
+```
+
+**错误**:
+
+| 状态码 | 条件 |
+|--------|------|
+| 404 | 共享副本不存在 |
+| 404 | 源记忆已被删除 |
+| 400 | 该记忆不是共享副本（没有 provenance） |
+
+**curl 示例**:
+
+```bash
+# 刷新指定空间中的过时副本
+curl -X POST http://localhost:8080/v1/memories/770e8400-e29b-41d4-a716-446655440000/reshare \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d '{"target_space": "team/backend"}'
+
+# 不指定空间，自动查找
+curl -X POST http://localhost:8080/v1/memories/770e8400-e29b-41d4-a716-446655440000/reshare \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d '{}'
+```
+
+---
+
 ### POST /v1/spaces/{id}/auto-share-rules
 
-创建自动分享规则。当新记忆满足规则条件时，自动分享到该 Space。需要 Admin 权限。
+创建自动分享规则。当通过 `POST /v1/memories`（直接创建模式）创建新记忆且满足规则条件时，系统会异步自动分享到该 Space。自动分享为 fire-and-forget 模式，不会阻塞记忆创建响应。需要 Admin 权限。
+
+> **注意：** 自动分享仅在直接创建模式（传入 `content` 字段）下触发。消息摄入模式（传入 `messages`）返回 `202 Accepted` 后异步处理，目前不触发自动分享。共享副本携带源记忆的向量嵌入，且重复分享会被自动跳过（幂等）。
 
 **认证**: 需要 `X-API-Key`
 
@@ -1531,6 +1656,319 @@ curl http://localhost:8080/v1/spaces/team/backend/auto-share-rules \
 ```bash
 curl -X DELETE http://localhost:8080/v1/spaces/team/backend/auto-share-rules/880e8400-e29b-41d4-a716-446655440000 \
   -H "X-API-Key: YOUR_API_KEY"
+```
+
+---
+
+### POST /v1/memories/share-all
+
+批量分享当前用户个人空间中所有匹配条件的记忆到目标 Space。内部使用并行 batch share（并发度 10）。
+
+**认证**: 需要 `X-API-Key`
+
+**Request Body**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| target_space | string | 是 | 目标 Space ID |
+| filters | object | 否 | 过滤条件 |
+| filters.categories | string[] | 否 | 按分类过滤 |
+| filters.tags | string[] | 否 | 按标签过滤 |
+| filters.min_importance | float | 否 | 最低重要性阈值 |
+
+```json
+{
+  "target_space": "team/backend",
+  "filters": {
+    "categories": ["cases", "patterns"],
+    "min_importance": 0.7
+  }
+}
+```
+
+**Response** `200 OK`:
+
+```json
+{
+  "total": 150,
+  "shared": 23,
+  "skipped_existing": 5,
+  "failed": 0
+}
+```
+
+> `total` 为个人空间中的记忆总数，`shared` 为本次新分享的数量，`skipped_existing` 为已存在副本被跳过的数量。
+
+**错误**:
+
+| 状态码 | 条件 |
+|--------|------|
+| 400 | `target_space` 为空 |
+| 400 | 个人空间记忆数超过 5000 条上限 |
+| 401 | 对目标 Space 没有写权限 |
+| 404 | 目标 Space 不存在 |
+
+**curl 示例**:
+
+```bash
+# 分享所有记忆
+curl -X POST http://localhost:8080/v1/memories/share-all \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d '{"target_space": "team/backend"}'
+
+# 带过滤条件
+curl -X POST http://localhost:8080/v1/memories/share-all \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d '{"target_space": "team/backend", "filters": {"categories": ["cases"], "min_importance": 0.7}}'
+```
+
+---
+
+### POST /v1/memories/{id}/share-to-user
+
+一步跨用户分享。自动创建桥接 Team Space（如果不存在），添加目标用户为成员，并分享记忆。
+
+**认证**: 需要 `X-API-Key`
+
+**路径参数**:
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| id | string | 要分享的记忆 UUID |
+
+**Request Body**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| target_user | string | 是 | 目标用户的 tenant ID（即 API Key） |
+| note | string | 否 | 分享备注 |
+
+```json
+{
+  "target_user": "bob-tenant-uuid",
+  "note": "Check out this architecture decision"
+}
+```
+
+**Response** `200 OK`:
+
+```json
+{
+  "space_id": "team/550e8400-e29b-41d4-a716-446655440000",
+  "shared_copy_id": "770e8400-e29b-41d4-a716-446655440000",
+  "space_created": true
+}
+```
+
+> `space_created` 为 `true` 表示本次调用创建了新的桥接 Space；`false` 表示复用了已有的共享 Space。
+
+**错误**:
+
+| 状态码 | 条件 |
+|--------|------|
+| 400 | `target_user` 为空 |
+| 404 | 记忆不存在 |
+
+**curl 示例**:
+
+```bash
+curl -X POST http://localhost:8080/v1/memories/660e8400-e29b-41d4-a716-446655440000/share-to-user \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d '{"target_user": "bob-tenant-uuid"}'
+```
+
+---
+
+### POST /v1/memories/share-all-to-user
+
+一步批量跨用户分享。结合 share-to-user 和 share-all：自动创建桥接 Space，然后批量分享匹配条件的记忆。
+
+**认证**: 需要 `X-API-Key`
+
+**Request Body**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| target_user | string | 是 | 目标用户的 tenant ID |
+| filters | object | 否 | 过滤条件（同 share-all） |
+| filters.categories | string[] | 否 | 按分类过滤 |
+| filters.tags | string[] | 否 | 按标签过滤 |
+| filters.min_importance | float | 否 | 最低重要性阈值 |
+
+```json
+{
+  "target_user": "bob-tenant-uuid",
+  "filters": {
+    "categories": ["preferences"],
+    "min_importance": 0.5
+  }
+}
+```
+
+**Response** `200 OK`:
+
+```json
+{
+  "space_id": "team/550e8400-e29b-41d4-a716-446655440000",
+  "space_created": false,
+  "total": 80,
+  "shared": 15,
+  "skipped_existing": 3,
+  "failed": 0
+}
+```
+
+**错误**:
+
+| 状态码 | 条件 |
+|--------|------|
+| 400 | `target_user` 为空 |
+| 400 | 个人空间记忆数超过 5000 条上限 |
+
+**curl 示例**:
+
+```bash
+curl -X POST http://localhost:8080/v1/memories/share-all-to-user \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d '{"target_user": "bob-tenant-uuid", "filters": {"min_importance": 0.8}}'
+```
+
+---
+
+### POST /v1/org/setup
+
+一步创建 Organization Space 并添加成员。调用者自动成为 Admin。
+
+**认证**: 需要 `X-API-Key`
+
+**Request Body**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 是 | 组织名称 |
+| members | array | 是 | 成员列表 |
+| members[].user_id | string | 是 | 用户 ID |
+| members[].role | string | 是 | 角色：`"admin"`, `"member"`, `"reader"` |
+
+```json
+{
+  "name": "Acme Corp Standards",
+  "members": [
+    {"user_id": "user-002", "role": "reader"},
+    {"user_id": "user-003", "role": "reader"},
+    {"user_id": "user-004", "role": "member"}
+  ]
+}
+```
+
+**Response** `200 OK`:
+
+```json
+{
+  "space_id": "org/550e8400-e29b-41d4-a716-446655440000",
+  "name": "Acme Corp Standards",
+  "members_added": 3,
+  "failed_members": []
+}
+```
+
+**错误**:
+
+| 状态码 | 条件 |
+|--------|------|
+| 400 | `name` 为空 |
+| 400 | `members` 为空 |
+
+**curl 示例**:
+
+```bash
+curl -X POST http://localhost:8080/v1/org/setup \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d '{
+    "name": "Acme Corp Standards",
+    "members": [
+      {"user_id": "user-002", "role": "reader"},
+      {"user_id": "user-003", "role": "reader"}
+    ]
+  }'
+```
+
+---
+
+### POST /v1/org/{id}/publish
+
+向 Organization Space 发布记忆，并可选创建自动分享规则。需要 Admin 权限。
+
+**认证**: 需要 `X-API-Key`
+
+**路径参数**:
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| id | string | Organization Space ID |
+
+**Request Body**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| memory_ids | string[] | 否 | 要发布的记忆 UUID 列表 |
+| auto_share_rule | object | 否 | 自动分享规则（发布后自动分享匹配的新记忆） |
+| auto_share_rule.categories | string[] | 否 | 匹配的分类 |
+| auto_share_rule.min_importance | float | 否 | 最低重要性 |
+
+```json
+{
+  "memory_ids": ["mem-1", "mem-2", "mem-3"],
+  "auto_share_rule": {
+    "categories": ["patterns"],
+    "min_importance": 0.8
+  }
+}
+```
+
+**Response** `200 OK`:
+
+```json
+{
+  "published": 3,
+  "skipped_existing": 0,
+  "failed": 0,
+  "auto_share_rule_id": "880e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+> `auto_share_rule_id` 仅在请求中包含 `auto_share_rule` 时返回。
+
+**错误**:
+
+| 状态码 | 条件 |
+|--------|------|
+| 401 | 不是该 Organization Space 的 Admin |
+| 404 | Space 不存在 |
+| 400 | `memory_ids` 和 `auto_share_rule` 都没有提供 |
+
+**curl 示例**:
+
+```bash
+# 发布指定记忆
+curl -X POST http://localhost:8080/v1/org/org%2F550e8400/publish \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d '{"memory_ids": ["mem-1", "mem-2"]}'
+
+# 发布记忆 + 创建自动分享规则
+curl -X POST http://localhost:8080/v1/org/org%2F550e8400/publish \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d '{
+    "memory_ids": ["mem-1"],
+    "auto_share_rule": {"categories": ["patterns"], "min_importance": 0.8}
+  }'
 ```
 
 ---
@@ -2411,6 +2849,7 @@ Memory 对象包含 28 个字段：
 | visibility | string | 否 | 可见性：`"global"`, `"private"`, `"shared:<group-id>"` |
 | owner_agent_id | string | 否 | 拥有者 Agent ID |
 | provenance | object | 是 | 来源追踪信息（分享时填充） |
+| version | integer | 是 | 版本号，从 1 开始，每次更新自增。旧记忆可能为 null |
 
 **MemoryRelation 结构**:
 
@@ -2430,6 +2869,7 @@ Memory 对象包含 28 个字段：
 | shared_by_agent | string | 分享者 Agent ID |
 | shared_at | string | 分享时间（ISO 8601） |
 | original_created_at | string | 原始记忆创建时间（ISO 8601） |
+| source_version | integer | 分享时源记忆的版本号（用于过时检测） |
 
 ### B. 枚举值参考
 
@@ -2501,6 +2941,7 @@ Memory 对象包含 28 个字段：
 | `pull` | 从 Space 拉取记忆 |
 | `unshare` | 撤销分享 |
 | `batch_share` | 批量分享 |
+| `reshare` | 刷新过时的共享副本 |
 
 **TenantStatus（租户状态）**:
 

@@ -113,5 +113,122 @@ export function buildTools(client: OmemClient, containerTags: string[]) {
         }
       },
     }),
+
+    space_create: tool({
+      description:
+        "Create a shared space (team or organization) for sharing memories across users and agents.",
+      args: {
+        name: tool.schema.string().describe("Name of the space"),
+        space_type: tool.schema
+          .string()
+          .describe("Type of space: 'team' or 'organization'"),
+        members: tool.schema
+          .array(
+            tool.schema.object({
+              user_id: tool.schema.string().describe("User/tenant ID to add"),
+              role: tool.schema.string().describe("Member role: admin, member, or reader"),
+            }),
+          )
+          .optional()
+          .describe("Initial members to add"),
+      },
+      async execute(args) {
+        const result = await client.createSpace(
+          args.name,
+          args.space_type,
+          args.members,
+        );
+        if (!result) return JSON.stringify({ ok: false, error: "Failed to create space" });
+        return JSON.stringify({ ok: true, space: result });
+      },
+    }),
+
+    space_list: tool({
+      description:
+        "List all spaces you own or are a member of.",
+      args: {},
+      async execute() {
+        const spaces = await client.listSpaces();
+        return JSON.stringify({ ok: true, spaces });
+      },
+    }),
+
+    space_add_member: tool({
+      description:
+        "Add a user to an existing shared space with a specified role.",
+      args: {
+        space_id: tool.schema.string().describe("Space ID"),
+        user_id: tool.schema.string().describe("User/tenant ID to add"),
+        role: tool.schema.string().describe("Role: admin, member, or reader"),
+      },
+      async execute(args) {
+        const result = await client.addSpaceMember(
+          args.space_id,
+          args.user_id,
+          args.role,
+        );
+        if (!result) return JSON.stringify({ ok: false, error: "Failed to add member" });
+        return JSON.stringify({ ok: true, result });
+      },
+    }),
+
+    memory_share: tool({
+      description:
+        "Share a memory to a team or organization space. Creates a copy with provenance tracking.",
+      args: {
+        memory_id: tool.schema.string().describe("Memory ID to share"),
+        target_space: tool.schema.string().describe("Target space ID"),
+      },
+      async execute(args) {
+        const result = await client.shareMemory(
+          args.memory_id,
+          args.target_space,
+        );
+        if (!result) return JSON.stringify({ ok: false, error: "Failed to share memory" });
+        return JSON.stringify({ ok: true, result });
+      },
+    }),
+
+    memory_pull: tool({
+      description:
+        "Pull a shared memory from a team/organization space into your personal space.",
+      args: {
+        memory_id: tool.schema.string().describe("Memory ID to pull"),
+        source_space: tool.schema.string().describe("Source space ID"),
+        visibility: tool.schema
+          .string()
+          .optional()
+          .describe("Visibility of the pulled copy"),
+      },
+      async execute(args) {
+        const result = await client.pullMemory(
+          args.memory_id,
+          args.source_space,
+          args.visibility,
+        );
+        if (!result) return JSON.stringify({ ok: false, error: "Failed to pull memory" });
+        return JSON.stringify({ ok: true, result });
+      },
+    }),
+
+    memory_reshare: tool({
+      description:
+        "Refresh a stale shared copy with the latest content and vector from the source memory.",
+      args: {
+        memory_id: tool.schema.string().describe("Shared copy memory ID to refresh"),
+        target_space: tool.schema
+          .string()
+          .optional()
+          .describe("Target space containing the copy (optional)"),
+      },
+      async execute(args) {
+        const result = await client.reshareMemory(
+          args.memory_id,
+          args.target_space,
+        );
+        if (!result) return JSON.stringify({ ok: false, error: "Failed to reshare memory" });
+        return JSON.stringify({ ok: true, result });
+      },
+    }),
   };
 }

@@ -73,8 +73,29 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             post(handlers::unshare_memory),
         )
         .route(
+            "/v1/memories/{id}/reshare",
+            post(handlers::reshare_memory),
+        )
+        .route(
             "/v1/memories/batch-share",
             post(handlers::batch_share),
+        )
+        .route(
+            "/v1/memories/share-all",
+            post(handlers::share_all),
+        )
+        .route(
+            "/v1/memories/{id}/share-to-user",
+            post(handlers::share_to_user),
+        )
+        .route(
+            "/v1/memories/share-all-to-user",
+            post(handlers::share_all_to_user),
+        )
+        .route("/v1/org/setup", post(handlers::org_setup))
+        .route(
+            "/v1/org/{id}/publish",
+            post(handlers::org_publish),
         )
         .route(
             "/v1/spaces/{id}/auto-share-rules",

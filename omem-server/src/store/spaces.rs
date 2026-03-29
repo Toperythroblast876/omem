@@ -213,9 +213,11 @@ impl SpaceStore {
 
     pub async fn list_spaces_for_user(&self, user_id: &str) -> Result<Vec<Space>, OmemError> {
         let table = self.open_spaces_table().await?;
+        // Query ALL spaces — we filter in Rust to catch both owner and member matches.
+        // The `data` column contains serialized Space JSON including members array,
+        // which cannot be efficiently queried via SQL in LanceDB.
         let batches: Vec<RecordBatch> = table
             .query()
-            .only_if(format!("owner_id = '{}'", escape_sql(user_id)))
             .execute()
             .await
             .map_err(|e| OmemError::Storage(format!("list spaces query failed: {e}")))?
@@ -226,7 +228,12 @@ impl SpaceStore {
         let mut spaces = Vec::new();
         for batch in &batches {
             for i in 0..batch.num_rows() {
-                spaces.push(Self::row_to_space(batch, i)?);
+                let space = Self::row_to_space(batch, i)?;
+                if space.owner_id == user_id
+                    || space.members.iter().any(|m| m.user_id == user_id)
+                {
+                    spaces.push(space);
+                }
             }
         }
         Ok(spaces)
@@ -641,5 +648,40 @@ mod tests {
     async fn test_init_tables_idempotent() {
         let (store, _dir) = setup().await;
         store.init_tables().await.expect("second init should succeed");
+    }
+
+    #[tokio::test]
+    async fn test_list_spaces_includes_member_spaces() {
+        let (store, _dir) = setup().await;
+
+        let mut team_space = make_space("team:backend", "Backend Team", "alice");
+        team_space.members.push(SpaceMember {
+            user_id: "bob".to_string(),
+            role: MemberRole::Member,
+            joined_at: "2025-01-02T00:00:00Z".to_string(),
+        });
+        store.create_space(&team_space).await.expect("create team");
+
+        let alice_personal = Space {
+            id: "personal:alice".to_string(),
+            space_type: SpaceType::Personal,
+            name: "Alice Personal".to_string(),
+            owner_id: "alice".to_string(),
+            members: Vec::new(),
+            auto_share_rules: Vec::new(),
+            created_at: "2025-01-01T00:00:00Z".to_string(),
+            updated_at: "2025-01-01T00:00:00Z".to_string(),
+        };
+        store.create_space(&alice_personal).await.expect("create alice personal");
+
+        let alice_spaces = store.list_spaces_for_user("alice").await.expect("list alice");
+        assert_eq!(alice_spaces.len(), 2);
+
+        let bob_spaces = store.list_spaces_for_user("bob").await.expect("list bob");
+        assert_eq!(bob_spaces.len(), 1);
+        assert_eq!(bob_spaces[0].id, "team:backend");
+
+        let charlie_spaces = store.list_spaces_for_user("charlie").await.expect("list charlie");
+        assert_eq!(charlie_spaces.len(), 0);
     }
 }

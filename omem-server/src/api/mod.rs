@@ -1068,7 +1068,7 @@ mod tests {
         let json: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
         assert_eq!(json["name"], "Backend Team");
         assert_eq!(json["space_type"], "team");
-        assert!(json["id"].as_str().expect("id").starts_with("team:"));
+        assert!(json["id"].as_str().expect("id").starts_with("team/"));
         assert_eq!(json["owner_id"], api_key);
         assert_eq!(json["members"].as_array().expect("members").len(), 1);
     }
@@ -1282,7 +1282,7 @@ mod tests {
         assert!(spaces[0]["id"]
             .as_str()
             .expect("id")
-            .starts_with("personal:"));
+            .starts_with("personal/"));
         assert_eq!(spaces[0]["space_type"], "personal");
     }
 

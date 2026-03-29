@@ -159,5 +159,181 @@ export function buildTools(client: OmemClient): AnyAgentTool[] {
         }
       },
     },
+
+    {
+      name: "space_create",
+      label: "Create Space",
+      description:
+        "Create a shared space (team or organization) for sharing memories across users and agents.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Name of the space" },
+          space_type: { type: "string", description: "Type of space: 'team' or 'organization'" },
+          members: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                user_id: { type: "string", description: "User/tenant ID to add" },
+                role: { type: "string", description: "Member role: admin, member, or reader" },
+              },
+            },
+            description: "Initial members to add (optional)",
+          },
+        },
+        required: ["name", "space_type"],
+      },
+      async execute(_id: string, params: unknown) {
+        try {
+          const args = (params ?? {}) as Record<string, unknown>;
+          const result = await client.createSpace(
+            args.name as string,
+            args.space_type as string,
+            args.members as Array<{ user_id: string; role: string }> | undefined,
+          );
+          if (!result) return jsonResult({ ok: false, error: "Failed to create space" });
+          return jsonResult({ ok: true, space: result });
+        } catch (err) {
+          return jsonResult({ ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+      },
+    },
+
+    {
+      name: "space_list",
+      label: "List Spaces",
+      description:
+        "List all spaces you own or are a member of.",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+      async execute(_id: string, _params: unknown) {
+        try {
+          const spaces = await client.listSpaces();
+          return jsonResult({ ok: true, spaces });
+        } catch (err) {
+          return jsonResult({ ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+      },
+    },
+
+    {
+      name: "space_add_member",
+      label: "Add Space Member",
+      description:
+        "Add a user to an existing shared space with a specified role.",
+      parameters: {
+        type: "object",
+        properties: {
+          space_id: { type: "string", description: "Space ID" },
+          user_id: { type: "string", description: "User/tenant ID to add" },
+          role: { type: "string", description: "Role: admin, member, or reader" },
+        },
+        required: ["space_id", "user_id", "role"],
+      },
+      async execute(_id: string, params: unknown) {
+        try {
+          const args = (params ?? {}) as Record<string, unknown>;
+          const result = await client.addSpaceMember(
+            args.space_id as string,
+            args.user_id as string,
+            args.role as string,
+          );
+          if (!result) return jsonResult({ ok: false, error: "Failed to add member" });
+          return jsonResult({ ok: true, result });
+        } catch (err) {
+          return jsonResult({ ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+      },
+    },
+
+    {
+      name: "memory_share",
+      label: "Share Memory",
+      description:
+        "Share a memory to a team or organization space. Creates a copy with provenance tracking.",
+      parameters: {
+        type: "object",
+        properties: {
+          memory_id: { type: "string", description: "Memory ID to share" },
+          target_space: { type: "string", description: "Target space ID" },
+        },
+        required: ["memory_id", "target_space"],
+      },
+      async execute(_id: string, params: unknown) {
+        try {
+          const args = (params ?? {}) as Record<string, unknown>;
+          const result = await client.shareMemory(
+            args.memory_id as string,
+            args.target_space as string,
+          );
+          if (!result) return jsonResult({ ok: false, error: "Failed to share memory" });
+          return jsonResult({ ok: true, result });
+        } catch (err) {
+          return jsonResult({ ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+      },
+    },
+
+    {
+      name: "memory_pull",
+      label: "Pull Memory",
+      description:
+        "Pull a shared memory from a team/organization space into your personal space.",
+      parameters: {
+        type: "object",
+        properties: {
+          memory_id: { type: "string", description: "Memory ID to pull" },
+          source_space: { type: "string", description: "Source space ID" },
+          visibility: { type: "string", description: "Visibility of the pulled copy (optional)" },
+        },
+        required: ["memory_id", "source_space"],
+      },
+      async execute(_id: string, params: unknown) {
+        try {
+          const args = (params ?? {}) as Record<string, unknown>;
+          const result = await client.pullMemory(
+            args.memory_id as string,
+            args.source_space as string,
+            args.visibility as string | undefined,
+          );
+          if (!result) return jsonResult({ ok: false, error: "Failed to pull memory" });
+          return jsonResult({ ok: true, result });
+        } catch (err) {
+          return jsonResult({ ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+      },
+    },
+
+    {
+      name: "memory_reshare",
+      label: "Reshare Memory",
+      description:
+        "Refresh a stale shared copy with the latest content and vector from the source memory.",
+      parameters: {
+        type: "object",
+        properties: {
+          memory_id: { type: "string", description: "Shared copy memory ID to refresh" },
+          target_space: { type: "string", description: "Target space containing the copy (optional)" },
+        },
+        required: ["memory_id"],
+      },
+      async execute(_id: string, params: unknown) {
+        try {
+          const args = (params ?? {}) as Record<string, unknown>;
+          const result = await client.reshareMemory(
+            args.memory_id as string,
+            args.target_space as string | undefined,
+          );
+          if (!result) return jsonResult({ ok: false, error: "Failed to reshare memory" });
+          return jsonResult({ ok: true, result });
+        } catch (err) {
+          return jsonResult({ ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+      },
+    },
   ];
 }

@@ -164,4 +164,59 @@ export class OmemClient {
     );
     return res?.memories ?? [];
   }
+
+  async createSpace(
+    name: string,
+    spaceType: string,
+    members?: Array<{ user_id: string; role: string }>,
+  ): Promise<unknown> {
+    return this.post("/v1/spaces", { name, space_type: spaceType, members });
+  }
+
+  async listSpaces(): Promise<unknown[]> {
+    const res = await this.request<{ spaces: unknown[] }>("/v1/spaces");
+    return res?.spaces ?? [];
+  }
+
+  async addSpaceMember(
+    spaceId: string,
+    userId: string,
+    role: string,
+  ): Promise<unknown> {
+    return this.post(
+      `/v1/spaces/${encodeURIComponent(spaceId)}/members`,
+      { user_id: userId, role },
+    );
+  }
+
+  async shareMemory(
+    memoryId: string,
+    targetSpace: string,
+  ): Promise<unknown> {
+    return this.post(
+      `/v1/memories/${encodeURIComponent(memoryId)}/share`,
+      { target_space: targetSpace },
+    );
+  }
+
+  async pullMemory(
+    memoryId: string,
+    sourceSpace: string,
+    visibility?: string,
+  ): Promise<unknown> {
+    return this.post(
+      `/v1/memories/${encodeURIComponent(memoryId)}/pull`,
+      { source_space: sourceSpace, visibility },
+    );
+  }
+
+  async reshareMemory(
+    memoryId: string,
+    targetSpace?: string,
+  ): Promise<unknown> {
+    return this.post(
+      `/v1/memories/${encodeURIComponent(memoryId)}/reshare`,
+      { target_space: targetSpace },
+    );
+  }
 }

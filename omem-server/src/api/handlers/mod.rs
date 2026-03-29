@@ -18,7 +18,8 @@ pub use memory::{
 pub use profile::get_profile;
 pub use sharing::{
     batch_share, create_auto_share_rule, delete_auto_share_rule, list_auto_share_rules,
-    pull_memory, share_memory, unshare_memory,
+    org_publish, org_setup, pull_memory, reshare_memory, share_all, share_all_to_user,
+    share_memory, share_to_user, unshare_memory,
 };
 pub use spaces::{
     add_member, create_space, delete_space, get_space, list_spaces, remove_member, update_member_role,
