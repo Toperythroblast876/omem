@@ -186,6 +186,49 @@ Most AI memory systems trap knowledge in silos. ourmem's three-tier Space archit
 - **Share across boundaries** — Personal → Team → Organization knowledge flow with full provenance
 - **No manual memory management** — Weibull decay handles lifecycle, auto-share rules handle distribution
 
+## Key Concepts
+
+### API Key = Tenant ID = Your Identity
+
+When you create a tenant, the returned `id` **is** your API Key. They're the same UUID. There is no separate "tenant ID".
+
+```bash
+curl -X POST https://api.ourmem.ai/v1/tenants -d '{"name": "alice"}'
+# → {"id": "a1b2c3d4-...", "api_key": "a1b2c3d4-...", "status": "active"}
+#          ↑ same value ↑
+```
+
+### API Key vs Space ID
+
+| Concept | What it is | Example | How many |
+|---------|-----------|---------|----------|
+| **API Key** | Your identity. Goes in `X-API-Key` header. | `a1b2c3d4-...` | 1 per user |
+| **Space ID** | A memory storage address. Each is an isolated database. | `personal/a1b2c3d4-...` | Multiple per user |
+
+One API Key owns multiple Spaces:
+
+```
+API Key "a1b2c3d4"
+  │
+  ├── personal/a1b2c3d4     ← auto-created, your private memories
+  ├── team/e5f6g7h8          ← team space you created (you = Admin)
+  ├── team/i9j0k1l2          ← team space you were invited to (you = Member)
+  └── org/m3n4o5p6           ← organization you joined (you = Reader)
+```
+
+### Sharing = Passing Your API Key
+
+To share memories with another user, you pass their API Key as `target_user`:
+
+```bash
+# Share all your preferences to user Bob
+curl -X POST https://api.ourmem.ai/v1/memories/share-all-to-user \
+  -H "X-API-Key: your-api-key" \
+  -d '{"target_user": "bobs-api-key", "filters": {"categories": ["preference"]}}'
+```
+
+The system automatically creates a bridging Team Space between you and Bob. No manual space management needed.
+
 ## Quick Start
 
 ### Agent Install (recommended)
