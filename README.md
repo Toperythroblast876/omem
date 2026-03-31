@@ -254,6 +254,16 @@ One message to your AI agent. It handles everything — API key, plugin install,
 
 That's it. Your agent handles the rest.
 
+**Skill Install (alternative):**
+
+If you prefer CLI installation, install the ourmem skill directly:
+
+```bash
+npx skills add ourmem/omem --skill ourmem -g
+```
+
+This works with 44+ AI agents including Claude Code, OpenCode, Cursor, and more. See [Vercel Skills CLI](https://github.com/vercel-labs/skills) for details.
+
 ---
 
 <details>

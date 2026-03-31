@@ -254,6 +254,16 @@ curl -X POST https://api.ourmem.ai/v1/memories/share-all-to-user \
 
 就这样。Agent 会处理剩下的一切。
 
+**Skill 安装（替代方式）：**
+
+如果你更喜欢命令行安装，可以直接安装 ourmem skill：
+
+```bash
+npx skills add ourmem/omem --skill ourmem -g
+```
+
+支持 44+ AI Agent，包括 Claude Code、OpenCode、Cursor 等。详见 [Vercel Skills CLI](https://github.com/vercel-labs/skills)。
+
 ---
 
 <details>
