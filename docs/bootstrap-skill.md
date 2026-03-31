@@ -76,8 +76,8 @@ jq '.plugin = ((.plugin // []) + ["@ourmem/opencode"] | unique)' opencode.json >
 Detect npm registry (China/Alibaba networks may need mirror):
 
 ```bash
-NPMJS_TIME="$(curl -o /dev/null -sS --connect-timeout 2 --max-time 6 -w '%{time_total}' https://registry.npmjs.org/@ourmem%2fopenclaw || echo timeout)"
-MIRROR_TIME="$(curl -o /dev/null -sS --connect-timeout 2 --max-time 6 -w '%{time_total}' https://registry.npmmirror.com/@ourmem%2fopenclaw || echo timeout)"
+NPMJS_TIME="$(curl -o /dev/null -sS --connect-timeout 2 --max-time 6 -w '%{time_total}' https://registry.npmjs.org/@ourmem%2fourmem || echo timeout)"
+MIRROR_TIME="$(curl -o /dev/null -sS --connect-timeout 2 --max-time 6 -w '%{time_total}' https://registry.npmmirror.com/@ourmem%2fourmem || echo timeout)"
 if [ "$MIRROR_TIME" != "timeout" ] && { [ "$NPMJS_TIME" = "timeout" ] || awk "BEGIN { exit !($NPMJS_TIME > 2 && $MIRROR_TIME < $NPMJS_TIME) }"; }; then
   NPM_CONFIG_REGISTRY=https://registry.npmmirror.com openclaw plugins install @ourmem/ourmem
 else

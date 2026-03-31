@@ -19,7 +19,7 @@
   - [2.3 Dual-Path Search](#23-dual-path-search)
 - [3. Plugin Integration](#3-plugin-integration)
   - [3.1 OpenCode Plugin](#31-opencode-plugin-ourmemopencode)
-  - [3.2 OpenClaw Plugin](#32-openclaw-plugin-ourmemopenclaw)
+  - [3.3 OpenClaw Plugin](#33-openclaw-plugin-ourmemourmem)
   - [3.3 Claude Code Plugin](#33-claude-code-plugin-hooks)
   - [3.4 MCP Server](#34-mcp-server-ourmemmcp)
   - [3.5 Cross-Plugin Comparison](#35-cross-plugin-comparison)

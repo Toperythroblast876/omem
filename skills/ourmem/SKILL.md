@@ -279,7 +279,7 @@ For detailed stats endpoints and parameters, READ `references/api-quick-ref.md`.
 - **Tenant isolation**: every API call scoped via X-API-Key, data physically separated per tenant
 - **Privacy protection**: `<private>` tag redaction strips sensitive content before storage
 - **Admission control**: 5-dimension scoring gate rejects low-quality data
-- **Open source**: Apache-2.0 licensed plugins — audit every line
+- **Open source**: Apache-2.0 licensed — audit every line
 
 ---
 

@@ -117,7 +117,7 @@ Weibull decay model manages the memory lifecycle — core memories persist, peri
 | | Auto-forgetting | TTL detection for time-sensitive info ("tomorrow", "next week") |
 | **Multi-modal** | File processing | PDF, image OCR, video transcription, code AST chunking |
 | | GitHub connector | Real-time webhook sync for code, issues, PRs |
-| **Deploy** | Open source | Apache-2.0 (plugins + docs) |
+| **Deploy** | Open source | Apache-2.0 |
 | | Self-hostable | Single binary, Docker one-liner, ~$5/month |
 | | musl static build | Zero-dependency binary for any Linux x86_64 |
 | | Object storage | Alibaba Cloud OSS or S3-compatible, with ECS RAM role support |
