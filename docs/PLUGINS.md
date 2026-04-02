@@ -40,22 +40,21 @@ ourmem provides plugins for 4 AI coding platforms. Each plugin is a thin HTTP cl
 
 ### Installation
 
-**Step 1**: Set environment variables in your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
-
-```bash
-export OMEM_API_URL="https://api.ourmem.ai"
-export OMEM_API_KEY="YOUR_API_KEY"
-```
-
-**Step 2**: Add to your `opencode.json`:
+**Step 1**: Add to your `opencode.json`:
 
 ```json
 {
-  "plugin": ["@ourmem/opencode"]
+  "plugin": ["@ourmem/opencode"],
+  "plugin_config": {
+    "@ourmem/opencode": {
+      "apiUrl": "https://api.ourmem.ai",
+      "apiKey": "YOUR_API_KEY"
+    }
+  }
 }
 ```
 
-That's it. The plugin reads `OMEM_API_URL` and `OMEM_API_KEY` from environment variables.
+The `plugin_config` field is the highest priority config source. The plugin also reads `~/.config/ourmem/config.json` (global) or `OMEM_API_URL`/`OMEM_API_KEY` env vars as alternatives.
 
 ### Verification
 
@@ -90,14 +89,20 @@ On the first message of each session, relevant memories and your user profile ar
 
 ### Installation
 
-**Step 1**: Set environment variables:
+**Step 1**: Configure credentials in `~/.claude/settings.json` (Claude Code's native config):
 
-```bash
-export OMEM_API_URL="https://api.ourmem.ai"
-export OMEM_API_KEY="YOUR_API_KEY"
+```json
+{
+  "env": {
+    "OMEM_API_URL": "https://api.ourmem.ai",
+    "OMEM_API_KEY": "YOUR_API_KEY"
+  }
+}
 ```
 
-Add these to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) for persistence.
+Claude Code auto-injects `env` fields into the process environment. This is the recommended approach.
+
+> **Alternative:** You can also `export OMEM_API_KEY=...` in your shell profile as a fallback.
 
 **Step 2**: Install from the marketplace:
 

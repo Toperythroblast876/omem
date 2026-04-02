@@ -293,7 +293,7 @@ Save the returned `api_key` — this reconnects you to the same memory from any 
 
 ### 2. Install Plugin
 
-**OpenCode:** Add `"plugin": ["@ourmem/opencode"]` to `opencode.json` + set `OMEM_API_URL` and `OMEM_API_KEY` env vars.
+**OpenCode:** Add `"plugin": ["@ourmem/opencode"]` to `opencode.json` + configure `plugin_config` with `apiUrl` and `apiKey` in the same file.
 
 **Claude Code:** `/plugin marketplace add ourmem/omem` + set env vars in `~/.claude/settings.json`.
 

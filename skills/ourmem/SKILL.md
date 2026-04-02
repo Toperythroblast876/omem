@@ -154,8 +154,8 @@ Cross-platform skill install: `npx skills add ourmem/omem --skill ourmem -g`
 
 | Platform | Install | Config |
 |----------|---------|--------|
-| Claude Code | `/plugin marketplace add ourmem/omem` | `OMEM_API_URL` + `OMEM_API_KEY` env vars |
-| OpenCode | `"plugin": ["@ourmem/opencode"]` in opencode.json | `OMEM_API_URL` + `OMEM_API_KEY` env vars |
+| Claude Code | `/plugin marketplace add ourmem/omem` | `~/.claude/settings.json` env field |
+| OpenCode | `"plugin": ["@ourmem/opencode"]` in opencode.json | `plugin_config` in opencode.json |
 | OpenClaw | `openclaw plugins install @ourmem/ourmem` | `openclaw.json` with apiUrl + apiKey |
 | MCP | `npx -y @ourmem/mcp` in MCP config | `OMEM_API_URL` + `OMEM_API_KEY` in env block |
 

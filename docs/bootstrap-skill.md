@@ -71,6 +71,12 @@ Add to `opencode.json` (create if needed):
 jq '.plugin = ((.plugin // []) + ["@ourmem/opencode"] | unique)' opencode.json > tmp.json && mv tmp.json opencode.json
 ```
 
+Write API credentials to `opencode.json` via `plugin_config`:
+
+```bash
+jq --arg url "$API_URL" --arg key "$API_KEY" '.plugin_config["@ourmem/opencode"] = {apiUrl: $url, apiKey: $key}' opencode.json > tmp.json && mv tmp.json opencode.json
+```
+
 ### OpenClaw
 
 Detect npm registry (China/Alibaba networks may need mirror):
@@ -126,16 +132,30 @@ Check that `SKILL.md` exists in at least one of these paths:
 
 If none exist, the installation failed. Retry the install command above. For Claude Code, also try the symlink workaround.
 
-## Step 4: Set Environment Variables
+## Step 4: Configure Credentials
 
-Add to `~/.bashrc` or `~/.zshrc` for persistence:
+**OpenCode**: Already configured in Step 2 via `plugin_config` in `opencode.json`. No extra step needed.
+
+**OpenClaw**: Already configured in Step 2 via `openclaw.json`. No extra step needed.
+
+**MCP (Cursor / VS Code / Claude Desktop)**: Already configured in Step 2 via MCP config `env` block. No extra step needed.
+
+**Claude Code**: Write env vars to `~/.claude/settings.json` (Claude Code's native config):
 
 ```bash
-export OMEM_API_URL="https://api.ourmem.ai"   # or http://localhost:8080 for self-hosted
-export OMEM_API_KEY="<your-api-key>"
+python3 -c "
+import json, os
+p = os.path.expanduser('~/.claude/settings.json')
+try: d = json.load(open(p))
+except: d = {}
+d.setdefault('env', {})
+d['env']['OMEM_API_KEY'] = '$API_KEY'
+d['env']['OMEM_API_URL'] = '$API_URL'
+json.dump(d, open(p, 'w'), indent=2)
+"
 ```
 
-OpenClaw uses `openclaw.json` config instead of env vars (configured in Step 2).
+> **Fallback:** If you prefer shell environment variables, you can also `export OMEM_API_KEY=...` and `export OMEM_API_URL=...` in `~/.bashrc` as an alternative.
 
 ## Step 5: Restart & Verify
 

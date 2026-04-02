@@ -18,12 +18,20 @@ claude --plugin-dir ./plugins/claude-code
 
 ## Setup
 
-Set your environment variables:
+Configure credentials in `~/.claude/settings.json` (Claude Code's native config):
 
-```bash
-export OMEM_API_KEY="your-api-key"
-export OMEM_API_URL="https://api.ourmem.ai"  # optional, this is the default
+```json
+{
+  "env": {
+    "OMEM_API_KEY": "your-api-key",
+    "OMEM_API_URL": "https://api.ourmem.ai"
+  }
+}
 ```
+
+Claude Code auto-injects `env` fields into the process environment.
+
+> **Alternative:** You can also `export OMEM_API_KEY=...` in your shell profile as a fallback.
 
 Get an API key at [ourmem.ai](https://ourmem.ai) or self-host:
 

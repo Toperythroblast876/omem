@@ -293,7 +293,7 @@ curl -sX POST http://localhost:8080/v1/tenants \
 
 ### 2. 安装插件
 
-**OpenCode:** 在 `opencode.json` 中添加 `"plugin": ["@ourmem/opencode"]` + 设置 `OMEM_API_URL` 和 `OMEM_API_KEY` 环境变量。
+**OpenCode:** 在 `opencode.json` 中添加 `"plugin": ["@ourmem/opencode"]` + 在同文件中通过 `plugin_config` 配置 `apiUrl` 和 `apiKey`。
 
 **Claude Code:** `/plugin marketplace add ourmem/omem` + 在 `~/.claude/settings.json` 设环境变量。
 

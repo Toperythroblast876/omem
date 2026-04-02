@@ -32,12 +32,22 @@ Pick the platform the user is on.
 
 ### Claude Code
 
-`[AGENT]` Set environment variables. Add to `~/.bashrc` or `~/.zshrc` for persistence:
+`[AGENT]` Write credentials to `~/.claude/settings.json` (Claude Code's native config):
 
 ```bash
-export OMEM_API_URL="https://api.ourmem.ai"
-export OMEM_API_KEY="YOUR_API_KEY"
+python3 -c "
+import json, os
+p = os.path.expanduser('~/.claude/settings.json')
+try: d = json.load(open(p))
+except: d = {}
+d.setdefault('env', {})
+d['env']['OMEM_API_KEY'] = '$API_KEY'
+d['env']['OMEM_API_URL'] = 'https://api.ourmem.ai'
+json.dump(d, open(p, 'w'), indent=2)
+"
 ```
+
+> **Fallback:** You can also `export OMEM_API_KEY=... && export OMEM_API_URL=...` in `~/.bashrc` as an alternative.
 
 Then install the plugin inside Claude Code:
 
@@ -67,12 +77,14 @@ If no `opencode.json` exists, create one:
 }
 ```
 
-Set environment variables (add to `~/.bashrc` or `~/.zshrc` for persistence):
+Set credentials via `plugin_config` in `opencode.json` (highest priority):
 
 ```bash
-export OMEM_API_URL="https://api.ourmem.ai"
-export OMEM_API_KEY="YOUR_API_KEY"
+jq --arg url "https://api.ourmem.ai" --arg key "$API_KEY" \
+  '.plugin_config["@ourmem/opencode"] = {apiUrl: $url, apiKey: $key}' opencode.json > tmp.json && mv tmp.json opencode.json
 ```
+
+> **Alternatives:** `~/.config/ourmem/config.json` (global config), or `export OMEM_API_KEY=...` env vars as fallback.
 
 ### OpenClaw
 

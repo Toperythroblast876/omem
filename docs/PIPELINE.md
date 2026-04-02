@@ -508,7 +508,7 @@ ourmem integrates with AI coding platforms through four plugins, each adapted to
 
 **Architecture:** Bash scripts registered via `hooks.json`, plus a bundled `@ourmem/mcp` server (via `.mcp.json`) for on-demand tools, and two skills for slash-command access.
 
-**Configuration:**
+**Configuration:** Credentials via `~/.claude/settings.json` env field (recommended) or environment variables (fallback).
 
 | Env Variable | Default | Purpose |
 |-------------|---------|---------|
@@ -535,7 +535,7 @@ All hooks use `curl` with 8-second HTTP timeout. Errors are silently swallowed t
 
 **Architecture:** TypeScript plugin implementing `@opencode-ai/plugin` interface. Registers 3 hooks and 5 tools. Default export with `{id: "ourmem", server}` format.
 
-**Configuration:**
+**Configuration:** Via `plugin_config` in `opencode.json` (highest priority), `~/.config/ourmem/config.json` (global), or environment variables (fallback).
 
 | Env Variable | Default | Purpose |
 |-------------|---------|---------|
