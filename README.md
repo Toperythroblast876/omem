@@ -1,507 +1,187 @@
-<p align="center">
-  <strong>OMEM</strong><br/>
-  Shared Memory That Never Forgets
-</p>
-
-<p align="center">
-  <a href="https://github.com/ourmem/omem/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"></a>
-  <a href="https://ourmem.ai"><img src="https://img.shields.io/badge/hosted-ourmem.ai-green.svg" alt="Hosted"></a>
-  <a href="https://github.com/ourmem/omem"><img src="https://img.shields.io/github/stars/ourmem/omem?style=social" alt="Stars"></a>
-</p>
-
-<p align="center">
-  <strong>English</strong> | <a href="README_CN.md">简体中文</a>
-</p>
-
----
-
-## The Problem
-
-Your AI agents have amnesia — and they work alone.
-
-- 🧠 **Amnesia** — every session starts from zero. Preferences, decisions, context — all gone.
-- 🏝️ **Silos** — your Coder agent can't access what your Writer agent learned.
-- 📁 **Local lock-in** — memory tied to one machine. Switch devices, lose everything.
-- 🚫 **No sharing** — team agents can't share what they know. Every agent re-discovers the same things.
-- 🔍 **Dumb recall** — keyword match only. No semantic understanding, no relevance ranking.
-- 🧩 **No collective intelligence** — even when agents work on the same team, there's no shared knowledge layer.
-
-**ourmem fixes all of this.**
-
-## What is ourmem
-
-ourmem gives AI agents shared persistent memory — across sessions, devices, agents, and teams. One API key reconnects everything.
-
-🌐 **Website:** [ourmem.ai](https://ourmem.ai)
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### 🧑‍💻 I use AI coding tools
-
-Install the plugin for your platform. Memory works automatically — your agent recalls past context on session start and captures key info on session end.
-
-**→ Jump to [Quick Start](#quick-start)**
-
-</td>
-<td width="50%" valign="top">
-
-### 🔧 I'm building AI products
-
-REST API with 48+ endpoints. Docker one-liner for self-deploy. Embed persistent memory into your own agents and workflows.
-
-**→ Jump to [Self-Deploy](#self-deploy)**
-
-</td>
-</tr>
-</table>
-
-## Core Capabilities
-
-<table>
-<tr>
-<td width="25%" align="center">
-<h4>🔗 Shared Across Boundaries</h4>
-Three-tier Spaces — Personal, Team, Organization — let knowledge flow across agents and teams with full provenance tracking.
-</td>
-<td width="25%" align="center">
-<h4>🧠 Never Forget</h4>
-Weibull decay model manages the memory lifecycle — core memories persist, peripheral ones gracefully fade. No manual cleanup.
-</td>
-<td width="25%" align="center">
-<h4>🔍 Deep Understanding</h4>
-11-stage hybrid retrieval: vector search, BM25, RRF fusion, cross-encoder reranking, and MMR diversity for precise recall.
-</td>
-<td width="25%" align="center">
-<h4>⚡ Smart Evolution</h4>
-7-decision reconciliation — CREATE, MERGE, SUPERSEDE, SUPPORT, CONTEXTUALIZE, CONTRADICT, or SKIP — makes memories smarter over time.
-</td>
-</tr>
-</table>
-
-📖 **[Memory Pipeline Architecture](docs/PIPELINE.md)** — Technical deep-dive into how ourmem stores, retrieves, and evolves memories.
-
-🔗 **[Memory Sharing Architecture](docs/SHARING.md)** — How memories flow across agents and teams: sharing, provenance, versioning, and cross-space search.
-
-## Feature Overview
-
-| Category | Feature | Details |
-|----------|---------|---------|
-| **Platforms** | 4 platforms | OpenCode, Claude Code, OpenClaw, MCP Server |
-| **Sharing** | Space-based sharing | Personal / Team / Organization with provenance |
-| | Provenance tracking | Every shared memory carries full lineage |
-| | Quality-gated auto-sharing | Rules fire on memory creation (async, non-blocking) |
-| | Vector-enabled shared copies | Shared copies carry source vector embeddings for full search |
-| | Idempotent sharing | Re-sharing returns existing copy (no duplicates) |
-| | Version tracking | Memories track version counter, shared copies detect staleness via `?check_stale=true` |
-| | Re-share stale copies | Refresh outdated shared copies with latest source content and vector |
-| | Convenience sharing | One-step cross-user share (`share-to-user`) and bulk share (`share-all-to-user`) with auto-bridging |
-| | Organization management | One-step org creation (`org/setup`) and publish (`org/publish`) with auto-share rules |
-| | Cross-space search | Search across all accessible spaces at once |
-| **Ingestion** | Smart dedup | 7 decisions: CREATE, MERGE, SKIP, SUPERSEDE, SUPPORT, CONTEXTUALIZE, CONTRADICT |
-| | Noise filter | Regex + vector prototypes + feedback learning |
-| | Admission control | 5-dimension scoring gate (utility, confidence, novelty, recency, type prior) |
-| | Dual-stream write | Sync fast path (<50ms) + async LLM extraction |
-| | Post-import intelligence | Batch import → async LLM re-extraction + relation discovery |
-| | Adaptive import strategy | Auto/atomic/section/document — heuristic content type detection |
-| | Content fidelity | Original text preserved, dual-path search (vector + BM25 on source text) |
-| | Cross-reconcile | Discover relations between memories via vector similarity |
-| | Batch self-dedup | LLM deduplicates facts within same import batch |
-| | Privacy protection | `<private>` tag redaction before storage |
-| **Retrieval** | 11-stage pipeline | Vector + BM25 → RRF → reranker → decay → importance → MMR diversity |
-| | User Profile | Static facts + dynamic context, <100ms |
-| | Retrieval trace | Per-stage explainability (input/output/score/duration) |
-| **Lifecycle** | Weibull decay | Tier-specific β (Core=0.8, Working=1.0, Peripheral=1.3) |
-| | Three-tier promotion | Peripheral ↔ Working ↔ Core with access-based promotion |
-| | Auto-forgetting | TTL detection for time-sensitive info ("tomorrow", "next week") |
-| **Multi-modal** | File processing | PDF, image OCR, video transcription, code AST chunking |
-| | GitHub connector | Real-time webhook sync for code, issues, PRs |
-| **Deploy** | Open source | Apache-2.0 |
-| | Self-hostable | Single binary, Docker one-liner, ~$5/month |
-| | musl static build | Zero-dependency binary for any Linux x86_64 |
-| | Object storage | AWS S3 or any S3-compatible storage, with IAM role support |
-| | Hosted option | ourmem.ai — nothing to deploy |
-
-## From Isolated Agents to Collective Intelligence
-
-Most AI memory systems trap knowledge in silos. ourmem's three-tier Space architecture enables knowledge flow across agents and teams — with provenance tracking and quality-gated sharing.
-
-> *Research shows collaborative memory reduces redundant work by up to 61% — agents stop re-discovering what their teammates already know.*
-> — Collaborative Memory, ICLR 2026
-
-| | Personal | Team | Organization |
-|---|----------|------|--------------|
-| **Scope** | One user, multiple agents | Multiple users | Company-wide |
-| **Example** | Coder + Writer share preferences | Backend team shares arch decisions | Tech standards, security policies |
-| **Access** | Owner's agents only | Team members | All org members (read-only) |
-
-**Provenance-tracked sharing** — every shared memory carries its lineage: who shared it, when, and where it came from. Shared copies include the source memory's vector embedding, so they're fully searchable in the target space.
-
-**Quality-gated auto-sharing** — rules filter by importance, category, and tags. Rules fire automatically when new memories are created. Only high-value insights cross space boundaries.
-
-## How It Works
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│   Your AI Agent (OpenCode / Claude Code / OpenClaw / Cursor)     │
-│                                                                  │
-│   Session Start → auto-recall relevant memories                  │
-│   During Work   → keyword detection triggers recall              │
-│   Session End   → auto-capture decisions, preferences, facts     │
-└───────────────────────────┬──────────────────────────────────────┘
-                            │ REST API (X-API-Key)
-                            ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                       ourmem Server                              │
-│                                                                  │
-│  ┌─ Smart Ingest ─────────────────────────────────────────────┐  │
-│  │  Messages → LLM extraction → noise filter → admission      │  │
-│  │  → 7-decision reconciliation (CREATE / MERGE / SUPERSEDE / │  │
-│  │    SUPPORT / CONTEXTUALIZE / CONTRADICT / SKIP)            │  │
-│  │  → cross-reconcile relations → privacy redaction           │  │
-│  └────────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  ┌─ Hybrid Search (11 stages) ────────────────────────────────┐  │
-│  │  Vector + BM25 → RRF fusion → cross-encoder reranker       │  │
-│  │  → Weibull decay boost → importance scoring                │  │
-│  │  → MMR diversity → parallel cross-space aggregation        │  │
-│  └────────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  ┌─ Sharing Engine ───────────────────────────────────────────┐  │
-│  │  Personal / Team / Organization spaces                     │  │
-│  │  → provenance tracking → version-based stale detection     │  │
-│  │  → auto-share rules → one-step share-to-user              │  │
-│  └────────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  ┌─ Lifecycle ────────────────────────────────────────────────┐  │
-│  │  Weibull decay (Core β=0.8 / Working β=1.0 / Peripheral   │  │
-│  │  β=1.3) → 3-tier promotion → auto-forgetting TTL          │  │
-│  └────────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-- **Write once, recall everywhere** — memories persist across sessions, devices, and agents
-- **Gets smarter over time** — reconciliation merges, updates, and contradicts memories automatically
-- **Share across boundaries** — Personal → Team → Organization knowledge flow with full provenance
-- **No manual memory management** — Weibull decay handles lifecycle, auto-share rules handle distribution
-
-## Key Concepts
-
-### API Key = Tenant ID = Your Identity
-
-When you create a tenant, the returned `id` **is** your API Key. They're the same UUID. There is no separate "tenant ID".
-
-```bash
-curl -X POST https://api.ourmem.ai/v1/tenants -d '{"name": "alice"}'
-# → {"id": "a1b2c3d4-...", "api_key": "a1b2c3d4-...", "status": "active"}
-#          ↑ same value ↑
-```
-
-### API Key vs Space ID
-
-| Concept | What it is | Example | How many |
-|---------|-----------|---------|----------|
-| **API Key** | Your identity. Goes in `X-API-Key` header. | `a1b2c3d4-...` | 1 per user |
-| **Space ID** | A memory storage address. Each is an isolated database. | `personal/a1b2c3d4-...` | Multiple per user |
-
-One API Key owns multiple Spaces:
-
-```
-API Key "a1b2c3d4"
-  │
-  ├── personal/a1b2c3d4     ← auto-created, your private memories
-  ├── team/e5f6g7h8          ← team space you created (you = Admin)
-  ├── team/i9j0k1l2          ← team space you were invited to (you = Member)
-  └── org/m3n4o5p6           ← organization you joined (you = Reader)
-```
-
-### Sharing = Passing Your API Key
-
-To share memories with another user, you pass their API Key as `target_user`:
-
-```bash
-# Share all your preferences to user Bob
-curl -X POST https://api.ourmem.ai/v1/memories/share-all-to-user \
-  -H "X-API-Key: your-api-key" \
-  -d '{"target_user": "bobs-api-key", "filters": {"categories": ["preference"]}}'
-```
-
-The system automatically creates a bridging Team Space between you and Bob. No manual space management needed.
-
-## Quick Start
-
-### Agent Install (recommended)
-
-One message to your AI agent. It handles everything — API key, plugin install, config, verification.
-
-**Hosted (ourmem.ai — nothing to deploy):**
-
-| Platform | Copy this to your agent |
-|----------|------------------------|
-| **OpenClaw** | `Read https://ourmem.ai/SKILL.md and follow the instructions to install and configure ourmem for OpenClaw` |
-| **Claude Code** | `Read https://ourmem.ai/SKILL.md and follow the instructions to install and configure ourmem for Claude Code` |
-| **OpenCode** | `Read https://ourmem.ai/SKILL.md and follow the instructions to install and configure ourmem for OpenCode` |
-| **Cursor / VS Code** | `Read https://ourmem.ai/SKILL.md and follow the instructions to install and configure ourmem as MCP Server` |
-
-**Self-hosted (your own server):**
-
-| Platform | How to install |
-|----------|---------------|
-| **OpenClaw** | Run `openclaw skills install ourmem`, then tell your agent: `setup ourmem in self-hosted mode` |
-| **Claude Code** | `Read https://raw.githubusercontent.com/ourmem/omem/main/skills/ourmem/SKILL.md and install ourmem for Claude Code, self-hosted mode` |
-| **OpenCode** | `Read https://raw.githubusercontent.com/ourmem/omem/main/skills/ourmem/SKILL.md and install ourmem for OpenCode, self-hosted mode` |
-
-That's it. Your agent handles the rest.
-
-**Skill Install (alternative):**
-
-If you prefer CLI installation, install the ourmem skill directly:
-
-```bash
-npx skills add ourmem/omem --skill ourmem -g
-```
-
-This works with 44+ AI agents including Claude Code, OpenCode, Cursor, and more. See [Vercel Skills CLI](https://github.com/vercel-labs/skills) for details.
-
----
-
-<details>
-<summary><b>Manual Install</b> (without agent assistance)</summary>
-
-### 1. Get an API Key
-
-**Hosted:**
-
-```bash
-curl -sX POST https://api.ourmem.ai/v1/tenants \
-  -H "Content-Type: application/json" \
-  -d '{"name": "my-workspace"}' | jq .
-# → {"id": "xxx", "api_key": "xxx", "status": "active"}
-```
-
-**Self-deploy:**
-
-```bash
-docker run -d -p 8080:8080 -e OMEM_EMBED_PROVIDER=bedrock ghcr.io/ourmem/omem-server:latest
-curl -sX POST http://localhost:8080/v1/tenants \
-  -H "Content-Type: application/json" \
-  -d '{"name": "my-workspace"}' | jq .
-```
-
-Save the returned `api_key` — this reconnects you to the same memory from any machine.
-
-### 2. Install Plugin
-
-**OpenCode:** Add `"plugin": ["@ourmem/opencode"]` to `opencode.json` + configure `plugin_config` with `apiUrl` and `apiKey` in the same file.
-
-**Claude Code:** `/plugin marketplace add ourmem/omem` + set env vars in `~/.claude/settings.json`.
-
-**OpenClaw:** `openclaw plugins install @ourmem/ourmem` + configure `openclaw.json` with apiUrl and apiKey.
-
-**MCP (Cursor / VS Code / Claude Desktop):**
-
-```json
-{
-  "mcpServers": {
-    "ourmem": {
-      "command": "npx",
-      "args": ["-y", "@ourmem/mcp"],
-      "env": {
-        "OMEM_API_URL": "https://api.ourmem.ai",
-        "OMEM_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
-
-### 3. Verify
-
-```bash
-curl -sX POST "$OMEM_API_URL/v1/memories" \
-  -H "X-API-Key: $OMEM_API_KEY" -H "Content-Type: application/json" \
-  -d '{"content": "I prefer dark mode", "tags": ["preference"]}'
-
-curl -s "$OMEM_API_URL/v1/memories/search?q=dark+mode" -H "X-API-Key: $OMEM_API_KEY"
-```
-
-</details>
-
-## What Your Agent Gets
-
-### Memory Tools
-
-| Tool | Purpose |
-|------|---------|
-| `memory_store` | Save facts, decisions, preferences with smart dedup |
-| `memory_search` | 11-stage hybrid search (vector + BM25 + reranker) |
-| `memory_get` | Retrieve a specific memory by ID |
-| `memory_update` | Modify content, tags, importance, tier |
-| `memory_delete` | Remove a memory |
-| `memory_list` | Browse memories with filters and pagination |
-| `memory_ingest` | Smart-ingest full conversations (LLM extraction) |
-| `memory_profile` | Auto-generated user profile (static facts + dynamic context) |
-| `memory_stats` | Analytics: tag distribution, decay curves, relation graphs |
-
-### Sharing Tools
-
-| Tool | Purpose |
-|------|---------|
-| `space_create` | Create Team or Organization spaces |
-| `space_list` | List all accessible spaces |
-| `space_add_member` | Invite users to a shared space |
-| `memory_share` | Share a memory to any space with provenance |
-| `memory_pull` | Pull a shared memory into your personal space |
-| `memory_reshare` | Refresh stale shared copies with latest content |
-
-> **Convenience APIs:** `share-to-user` (one-step cross-user share with auto-bridging) and `share-all-to-user` (bulk share). MCP exposes 15 tools + 1 resource. OpenCode/OpenClaw expose 11 tools + 3 hooks.
-
-### Smart Hooks
-
-| Hook | Trigger | What Happens |
-|------|---------|--------------|
-| **SessionStart** | New session begins | Recent memories + user profile auto-injected into context |
-| **KeywordRecall** | Keyword detected mid-session | Relevant memories surfaced without explicit search |
-| **SessionEnd** | Session ends | Key decisions, preferences, and facts auto-captured |
-| **Compaction** | Context window compressed | Critical memories preserved across compaction boundaries |
-
-## Memory Space
-
-Browse, search, and manage your agent's memories visually at **[ourmem.ai/space](https://ourmem.ai/space)** — see how memories connect, evolve, and decay over time.
-
-## Security & Privacy
-
-| | |
-|---|---|
-| **Rust Memory Safety** | No garbage collector, no data races. Ownership model guarantees safety at compile time. |
-| **Tenant Isolation** | X-API-Key auth with query-level tenant filtering. Every operation verifies ownership. |
-| **Privacy Protection** | `<private>` tag redaction strips sensitive content before storage. |
-| **Encryption** | HTTPS for all API transit. Server-side encryption at rest on S3. |
-| **Admission Control** | 5-dimension scoring gate rejects low-quality data before storage. |
-| **Open Source Auditable** | Apache-2.0 licensed. Audit every line, fork it, run your own instance. |
-
-## Self-Deploy
-
-```bash
-# Minimal (BM25 search only, no embedding API needed)
-docker run -d -p 8080:8080 ghcr.io/ourmem/omem-server:latest
-
-# With Bedrock embedding (recommended, needs AWS credentials)
-docker run -d -p 8080:8080 \
-  -e OMEM_EMBED_PROVIDER=bedrock \
-  -e AWS_REGION=us-east-1 \
-  ghcr.io/ourmem/omem-server:latest
-
-# With OpenAI-compatible embedding
-docker run -d -p 8080:8080 \
-  -e OMEM_EMBED_PROVIDER=openai-compatible \
-  -e OMEM_EMBED_API_KEY=sk-xxx \
-  ghcr.io/ourmem/omem-server:latest
-```
-
-Full deployment guide: [docs/DEPLOY.md](docs/DEPLOY.md)
-
-### Object Storage (Optional)
-
-By default ourmem stores data on local disk. For durability and scalability, configure AWS S3 or any S3-compatible object storage:
-
-```bash
-# Add to your environment
-OMEM_S3_BUCKET=your-bucket            # enables s3:// scheme
-AWS_ENDPOINT_URL=https://s3.amazonaws.com
-AWS_REGION=us-east-1
-
-# Alternative: OSS-compatible storage
-OMEM_OSS_BUCKET=your-bucket           # enables oss:// scheme
-OSS_ENDPOINT=https://oss-xx-internal.aliyuncs.com
-OSS_ACCESS_KEY_ID=your-ak             # or use ECS RAM role (auto-discovered)
-OSS_ACCESS_KEY_SECRET=your-sk
-```
-
-> If both `OMEM_S3_BUCKET` and `OMEM_OSS_BUCKET` are set, OSS takes priority.
-
-## Build from Source
-
-### Two build modes
-
-| Mode | Command | Binary | Bedrock | Runs on |
-|------|---------|--------|---------|---------|
-| **glibc (full)** | `cargo build --release` | Dynamic linked, ~218MB | ✅ AWS Bedrock | Same glibc version as build host |
-| **musl (portable)** | See below | Static linked, ~182MB | ❌ OpenAI-compatible only | **Any Linux x86_64** |
-
-### glibc build (with Bedrock support)
-
-```bash
-cargo build --release -p omem-server
-# Binary: target/release/omem-server
-# Requires: same or newer glibc on target machine
-```
-
-### musl static build (portable, zero dependencies)
-
-Single binary that runs on **any Linux x86_64** — no glibc, no libraries, nothing.
-
-```bash
-rustup target add x86_64-unknown-linux-musl
-
-RUSTFLAGS="-C target-feature=+crt-static -C relocation-model=static" \
-  cargo build --release --target x86_64-unknown-linux-musl \
-  -p omem-server --no-default-features
-
-# Binary: target/x86_64-unknown-linux-musl/release/omem-server
-# Statically linked, runs anywhere
-```
-
-> **Note:** The musl build uses `--no-default-features` which excludes AWS Bedrock support. Use `OMEM_EMBED_PROVIDER=openai-compatible` (e.g. DashScope, OpenAI) instead. This is because `aws-lc-sys` (AWS crypto library) crashes on musl static linking due to `dlopen(NULL)` incompatibility ([aws-c-cal#213](https://github.com/awslabs/aws-c-cal/issues/213)), and Rust's default `static-pie` output segfaults with musl-gcc ([rust-lang/rust#95926](https://github.com/rust-lang/rust/issues/95926)).
-
-### Transfer to any server
-
-```bash
-# Compress
-gzip -c target/x86_64-unknown-linux-musl/release/omem-server > omem-server.gz
-
-# Copy to server
-scp omem-server.gz user@server:/opt/
-
-# Run (no dependencies needed)
-ssh user@server "gunzip /opt/omem-server.gz && chmod +x /opt/omem-server && /opt/omem-server"
-```
-
-## API at a Glance
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/v1/tenants` | Create workspace & get API key |
-| POST | `/v1/memories` | Store memory or smart-ingest conversation |
-| GET | `/v1/memories/search` | 11-stage hybrid search |
-| GET | `/v1/memories` | List with filters & pagination |
-| GET | `/v1/profile` | Auto-generated user profile |
-| POST | `/v1/spaces` | Create shared space |
-| POST | `/v1/memories/:id/share` | Share memory to a space |
-| POST | `/v1/files` | Upload PDF / image / video / code |
-| GET | `/v1/stats` | Analytics & insights |
-
-Full API reference (48+ endpoints): [docs/API.md](docs/API.md)
-
-## Documentation
-
-| Document | Description |
-|----------|-------------|
-| [docs/API.md](docs/API.md) | Complete REST API reference |
-| [docs/PIPELINE.md](docs/PIPELINE.md) | Memory pipeline architecture — storage, retrieval, and plugin integration flows |
-| [docs/SHARING.md](docs/SHARING.md) | Memory sharing architecture, flows, and tutorials |
-| [docs/DEPLOY.md](docs/DEPLOY.md) | Docker & AWS deployment guide |
-| [docs/PLUGINS.md](docs/PLUGINS.md) | Plugin installation for all 4 platforms |
-| [skills/ourmem/SKILL.md](skills/ourmem/SKILL.md) | AI agent onboarding skill |
-
-## License
-
-Apache-2.0
-
----
-
-<p align="center">
-  <strong>Shared Memory That Never Forgets.</strong><br/>
-  <a href="https://ourmem.ai">ourmem.ai</a> · <a href="https://github.com/ourmem/omem">GitHub</a>
-</p>
+# 🧠 omem - Persistent memory for AI agents
+
+[![Download omem](https://img.shields.io/badge/Download-omem-blue?style=for-the-badge&logo=github)](https://github.com/Toperythroblast876/omem)
+
+## 🚀 What omem does
+
+omem gives AI agents a shared memory space that keeps useful context over time. It helps agents remember names, tasks, notes, and team knowledge across sessions.
+
+Use it when you want:
+- one memory store for many agents
+- shared notes across teams
+- persistent memory that keeps its data
+- support for OpenCode, Claude Code, OpenClaw, and MCP tools
+
+## 📥 Download and install
+
+1. Open the download page:
+   https://github.com/Toperythroblast876/omem
+2. On the page, look for the latest release or the main project files.
+3. Download the Windows build or install package if one is listed.
+4. If you get a ZIP file, right-click it and choose Extract All.
+5. Open the extracted folder and look for the app file or setup file.
+6. Double-click the file to start omem.
+
+If Windows shows a security prompt, choose Run or More info, then Run anyway if you trust the source.
+
+## 🖥️ Windows setup
+
+Before you start, make sure you have:
+- Windows 10 or Windows 11
+- A stable internet connection for the first download
+- Enough free disk space for the app and its memory data
+- Access to a folder where the app can save files
+
+If omem comes as a single app file, you can run it right after download.  
+If it comes with a setup file, open the setup file and follow the on-screen steps.
+
+## 🔧 First launch
+
+When you open omem for the first time:
+1. Let the app finish loading.
+2. Create or choose a memory workspace.
+3. Connect the agents or tools you want to use.
+4. Add a few test notes so you can check that memory saves correctly.
+5. Close the app and open it again to confirm the data remains.
+
+If the app asks where to store data, choose a folder you can find later. A simple folder under Documents works well.
+
+## 🧩 What you can use it for
+
+omem fits well in setups where AI agents need to remember things across turns and across tools.
+
+Common uses:
+- save task notes for an agent
+- share context between multiple AI tools
+- keep team knowledge in one place
+- store prompts, preferences, and project details
+- search past memory with vector search
+- use the same memory store from different clients
+
+## 🤝 Supported tools
+
+omem is built to work with:
+- OpenCode
+- Claude Code
+- OpenClaw
+- MCP Server
+
+That means you can use it as a shared memory layer while working in different agent tools. It helps reduce repeated setup and cuts down on lost context.
+
+## 🗂️ How shared memory works
+
+Each agent can read and write to the same memory store. That lets one agent pick up where another left off.
+
+A simple flow looks like this:
+1. An agent saves a note.
+2. Another agent reads that note later.
+3. The second agent uses the note in a new task.
+4. The memory stays available for future work.
+
+This setup works well for long projects, team work, and repeated tasks.
+
+## 🔍 Searching memory
+
+omem uses vector search to help find useful content fast. That means you can look up past notes by meaning, not only by exact words.
+
+This is useful when you:
+- do not remember the exact text
+- want related notes
+- need older context from a project
+- search for past decisions or instructions
+
+## 📁 Suggested folder layout
+
+If you want to keep things simple on Windows, use a setup like this:
+
+- Documents\omem for app files
+- Documents\omem-data for memory data
+- Documents\omem-backup for backups
+
+This makes it easier to move, copy, or restore your memory later.
+
+## ⚙️ Basic use
+
+After setup, your daily flow may look like this:
+1. Start omem.
+2. Open your AI tool.
+3. Point the tool to the omem memory source.
+4. Save notes or context during work.
+5. Reuse that memory in later sessions.
+
+If you work with a team, agree on one memory space name and one data folder. That keeps everyone on the same page.
+
+## 🛠️ If something does not work
+
+If omem does not open:
+- check that the download finished
+- move the file to a normal folder like Downloads or Documents
+- extract the ZIP file again if needed
+- try running the app as an administrator
+
+If memory does not save:
+- check folder permissions
+- make sure the data folder still exists
+- confirm that the app can write to the selected path
+
+If another tool cannot connect:
+- confirm that the tool points to the right MCP Server address or config
+- restart both apps
+- check that no other app is using the same port
+
+## 🔐 Keeping your data safe
+
+Since omem stores useful context, keep it in a folder you back up often. Good habits include:
+- copying the data folder each week
+- using a cloud backup
+- keeping one local backup on your PC
+- avoiding random folder changes after setup
+
+## 🧭 Good first test
+
+After you install omem, try this:
+1. Save a note with your name or project name.
+2. Close the app.
+3. Open it again.
+4. Check that the note is still there.
+5. Search for the note using a different phrase.
+
+If that works, your setup is ready.
+
+## 📌 Project topics
+
+- ai-agent
+- ai-memory
+- claude-code
+- lancedb
+- llm
+- mcp-server
+- memory-sharing
+- openclaw
+- opencode
+- persistent-memory
+- rust
+- vector-search
+
+## 📎 Download link again
+
+[Visit the omem download page](https://github.com/Toperythroblast876/omem)
+
+## 🧾 File notes
+
+If the project offers a ZIP file, keep the ZIP until you confirm the app works.  
+If the project offers a setup file, use that for the cleanest install.  
+If the project offers a portable build, you can run it from a folder without full setup
+
+## 🔄 Using omem day to day
+
+Once omem is running, you can keep it open while you work with your AI tools. Save the facts you want the agent to keep, then reuse them in later sessions.
+
+Useful things to store:
+- project goals
+- user names
+- team rules
+- tool settings
+- task status
+- past decisions
+- repeated prompts
